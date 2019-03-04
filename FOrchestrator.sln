@@ -1,0 +1,23 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# 
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FOrchestrator", "FOrchestrator\FOrchestrator.fsproj", "{CC248C43-4D35-4385-AD9D-368F1B965832}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestWebApp", "TestWebApp\TestWebApp.csproj", "{3BCEACD7-DCCB-4F1C-9E05-CC4192FF6F56}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CC248C43-4D35-4385-AD9D-368F1B965832}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CC248C43-4D35-4385-AD9D-368F1B965832}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CC248C43-4D35-4385-AD9D-368F1B965832}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CC248C43-4D35-4385-AD9D-368F1B965832}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3BCEACD7-DCCB-4F1C-9E05-CC4192FF6F56}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3BCEACD7-DCCB-4F1C-9E05-CC4192FF6F56}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3BCEACD7-DCCB-4F1C-9E05-CC4192FF6F56}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3BCEACD7-DCCB-4F1C-9E05-CC4192FF6F56}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
