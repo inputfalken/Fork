@@ -8,13 +8,9 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace TestWebApp
-{
-    public class Program
-    {
-        public static void Main(string[] args)
-        {
-            throw new ArgumentException("foo");
+namespace TestWebApp2 {
+    public class Program {
+        public static void Main(string[] args) {
             CreateWebHostBuilder(args)
                 .UseUrls("http://localhost:5002/")
                 .Build()
