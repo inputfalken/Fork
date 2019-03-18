@@ -58,7 +58,7 @@ let internal RecursiveKill (proc : Process) (timeout : TimeSpan) =
         children |> Seq.map (fun x -> runProcessAndWaitForExit "kill" (sprintf "-TERM %i" x) timeout) |> List.ofSeq
 
 
-let internal Create startInfo processOutput output  =
+let internal Create startInfo processOutput output =
     let proc = new Process(StartInfo = new ProcessStartInfo(
                                      Arguments = startInfo.Arguments,
                                      CreateNoWindow = true,
@@ -82,7 +82,7 @@ let internal Create startInfo processOutput output  =
     |> Event.add (processOutput)
     { Process = proc; Alias = startInfo.Alias }
 
-let internal Run(p : FProcess) (output: string -> unit) = async {
+let internal Run p output = async {
     return using p.Process (fun proc ->
         proc.Start() |> ignore
         sprintf "Starting process %s with id %i" proc.ProcessName proc.Id |> output
