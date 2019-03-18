@@ -1,10 +1,11 @@
-﻿open FOrchestrator
+﻿open BlackFox.ColoredPrintf
+open FOrchestrator
 open FOrchestrator.Process
 open System
 open System.Diagnostics
 open System.IO
 
-type FProcessArgumentProvider = FSharp.Data.JsonProvider<"""
+type ProcessStartInfoProvider = FSharp.Data.JsonProvider<"""
 [
     {
         "workingDirectory": "path",
@@ -18,8 +19,8 @@ type FProcessArgumentProvider = FSharp.Data.JsonProvider<"""
 [<EntryPoint>]
 let main argv =
     let stop p = try (p, TimeSpan.FromSeconds 30.) ||> Process.RecursiveKill |> ignore with :? System.InvalidOperationException as x -> ()
-    let isAlive (p : Process) = try p.Responding |> ignore ; "running" with :? System.InvalidOperationException as x -> "stopped"
-    let start p = p |> Process.Run |> Async.Start
+    let isAlive (p : Process) = try p.Responding |> ignore; "running" with :? System.InvalidOperationException as x -> "stopped"
+    let start p = p |> (fun x -> Process.Run x Console.WriteLine) |> Async.Start
 
     let rec session input processes processFactory =
         let stopProcesses p = p |> List.iter (fun x -> x.Process |> stop)
@@ -42,7 +43,7 @@ let main argv =
 
     let arguments = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".fork.json")
                   |> File.ReadAllText
-                  |> FProcessArgumentProvider.Parse
+                  |> ProcessStartInfoProvider.Parse
                   |> Seq.map (fun x -> {
                           WorkingDirectory = x.WorkingDirectory
                           FileName = x.FileName
@@ -51,7 +52,7 @@ let main argv =
                       })
                   |> Seq.toList
 
-    let processFactory() = arguments |> List.map Process.Create
+    let processFactory() = arguments |> List.map (fun x -> Process.Create x (fun y -> ColoredPrintf.colorprintfn "%s $yellow[->] %s" x.Alias y.Data) Console.WriteLine)
     let processes = processFactory()
     processes |> List.iter start
 

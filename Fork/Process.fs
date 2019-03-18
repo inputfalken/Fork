@@ -1,5 +1,4 @@
 module internal FOrchestrator.Process
-open BlackFox.ColoredPrintf
 open System.Diagnostics
 open System
 open System.Collections.Generic
@@ -11,7 +10,7 @@ type ProcessExit = { Code : int; Time : DateTime }
 type Stdout = | Error | Output
 type OutputType = { Data : string; Type : Stdout }
 type FProcess = { Process : Process; Alias : string }
-type FProcessArgument = { WorkingDirectory : string; FileName : string; Arguments : string; Alias : string }
+type StartInfo = { WorkingDirectory : string; FileName : string; Arguments : string; Alias : string }
 
 // Taken from https://github.com/aspnet/Extensions/blob/ffb7c20fb22a31ac31d3a836a8455655867e8e16/shared/Microsoft.Extensions.Process.Sources/ProcessHelper.cs
 let internal RecursiveKill (proc : Process) (timeout : TimeSpan) =
@@ -59,20 +58,20 @@ let internal RecursiveKill (proc : Process) (timeout : TimeSpan) =
         children |> Seq.map (fun x -> runProcessAndWaitForExit "kill" (sprintf "-TERM %i" x) timeout) |> List.ofSeq
 
 
-let internal Create(x : FProcessArgument) =
+let internal Create startInfo processOutput output  =
     let proc = new Process(StartInfo = new ProcessStartInfo(
-                                     Arguments = x.Arguments,
+                                     Arguments = startInfo.Arguments,
                                      CreateNoWindow = true,
-                                     FileName = x.FileName,
+                                     FileName = startInfo.FileName,
                                      RedirectStandardError = true,
                                      RedirectStandardOutput = true,
                                      UseShellExecute = false,
-                                     WorkingDirectory = x.WorkingDirectory,
+                                     WorkingDirectory = startInfo.WorkingDirectory,
                                      RedirectStandardInput = true
                                      )
      )
 
-    proc.Exited |> Event.add (fun x -> printfn "Process exited with code '%i'." proc.ExitCode)
+    proc.Exited |> Event.add (fun x -> (sprintf "Process exited with code '%i'." proc.ExitCode) |> output)
     proc.OutputDataReceived
     |> Event.map (fun x -> { Data = x.Data; Type = Stdout.Output })
     |> Event.merge (
@@ -80,16 +79,15 @@ let internal Create(x : FProcessArgument) =
            |> Event.map (fun x -> { Data = x.Data; Type = Stdout.Error })
        )
     |> Event.filter (fun x -> not (x.Data |> String.IsNullOrWhiteSpace))
-    |> Event.add (fun y -> colorprintfn "%s $yellow[->] %s" x.Alias y.Data) // TODO Use red arrow to indicate error.
-    { Process = proc; Alias = x.Alias }
+    |> Event.add (processOutput)
+    { Process = proc; Alias = startInfo.Alias }
 
-let internal Run(p : FProcess) = async {
+let internal Run(p : FProcess) (output: string -> unit) = async {
     return using p.Process (fun proc ->
         proc.Start() |> ignore
-        printfn "Starting process %s with id %i" proc.ProcessName proc.Id
+        sprintf "Starting process %s with id %i" proc.ProcessName proc.Id |> output
         proc.BeginErrorReadLine
         >> proc.BeginOutputReadLine
         >> proc.WaitForExit |> (fun x -> x();)
     )
-    printfn "Disposed"
  }
