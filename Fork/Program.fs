@@ -40,7 +40,7 @@ let main argv =
         | "exit" -> processes
         | _ -> (input, processes, processFactory) |||> session
 
-    let arguments = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".forchestrator.json")
+    let arguments = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".fork.json")
                   |> File.ReadAllText
                   |> FProcessArgumentProvider.Parse
                   |> Seq.map (fun x -> {
