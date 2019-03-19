@@ -12,7 +12,15 @@ type ProcessStartInfoProvider = FSharp.Data.JsonProvider<"""
         "workingDirectory": "path",
         "fileName": "dotnet",
         "arguments": "run",
-        "alias": "name"
+        "alias": "name",
+        "useSeperateWindow" : "true"
+    },
+    {
+        "workingDirectory": "path",
+        "fileName": "dotnet",
+        "arguments": "run",
+        "alias": "name",
+        "useSeperateWindow" : ""
     }
 ]
 """>
@@ -50,9 +58,11 @@ let main argv =
                           FileName = x.FileName
                           Arguments = x.Arguments
                           Alias = x.Alias
+                          UseSeperateWindow = match x.UseSeperateWindow with
+                                              | Some x -> x
+                                              | None -> false
                       })
                   |> Seq.toList
-
     let processFactory() = arguments |> List.map (fun x -> Process.Create x (fun y -> ColoredPrintf.colorprintfn "%s $yellow[->] %s" x.Alias y.Data) Console.WriteLine)
     let processes = processFactory()
     processes |> List.iter start

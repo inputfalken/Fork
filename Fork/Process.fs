@@ -9,8 +9,8 @@ type ProcessResult = { ExitCode : int; Output : string }
 type ProcessExit = { Code : int; Time : DateTime }
 type Stdout = | Error | Output
 type OutputType = { Data : string; Type : Stdout }
-type FProcess = { Process : Process; Alias : string }
-type StartInfo = { WorkingDirectory : string; FileName : string; Arguments : string; Alias : string }
+type FProcess = { Process : Process; Alias : string; IsUsingSeperateWindow : bool }
+type StartInfo = { WorkingDirectory : string; FileName : string; Arguments : string; Alias : string; UseSeperateWindow : bool }
 
 // Taken from https://github.com/aspnet/Extensions/blob/ffb7c20fb22a31ac31d3a836a8455655867e8e16/shared/Microsoft.Extensions.Process.Sources/ProcessHelper.cs
 let internal RecursiveKill (proc : Process) (timeout : TimeSpan) =
@@ -59,17 +59,27 @@ let internal RecursiveKill (proc : Process) (timeout : TimeSpan) =
 
 
 let internal Create startInfo processOutput output =
-    let proc = new Process(StartInfo = new ProcessStartInfo(
-                                     Arguments = startInfo.Arguments,
-                                     CreateNoWindow = true,
-                                     FileName = startInfo.FileName,
-                                     RedirectStandardError = true,
-                                     RedirectStandardOutput = true,
-                                     UseShellExecute = false,
-                                     WorkingDirectory = startInfo.WorkingDirectory,
-                                     RedirectStandardInput = true
-                                     )
-     )
+    let proc = match startInfo.UseSeperateWindow with
+               | true -> new Process(StartInfo = new ProcessStartInfo(
+                                                Arguments = startInfo.Arguments,
+                                                CreateNoWindow = true,
+                                                FileName = startInfo.FileName,
+                                                RedirectStandardError = false,
+                                                RedirectStandardInput = false,
+                                                RedirectStandardOutput = false,
+                                                UseShellExecute = true,
+                                                WorkingDirectory = startInfo.WorkingDirectory
+                                              ))
+               | false -> new Process(StartInfo = new ProcessStartInfo(
+                                                Arguments = startInfo.Arguments,
+                                                CreateNoWindow = true,
+                                                FileName = startInfo.FileName,
+                                                RedirectStandardError = true,
+                                                RedirectStandardInput = true,
+                                                RedirectStandardOutput = true,
+                                                UseShellExecute = false,
+                                                WorkingDirectory = startInfo.WorkingDirectory
+                                              ))
 
     proc.Exited |> Event.add (fun x -> (sprintf "Process exited with code '%i'." proc.ExitCode) |> output)
     proc.OutputDataReceived
@@ -80,14 +90,14 @@ let internal Create startInfo processOutput output =
        )
     |> Event.filter (fun x -> not (x.Data |> String.IsNullOrWhiteSpace))
     |> Event.add (processOutput)
-    { Process = proc; Alias = startInfo.Alias }
+    { Process = proc; Alias = startInfo.Alias; IsUsingSeperateWindow = startInfo.UseSeperateWindow }
 
 let internal Run p output = async {
     return using p.Process (fun proc ->
         proc.Start() |> ignore
         sprintf "Starting process %s with id %i" proc.ProcessName proc.Id |> output
-        proc.BeginErrorReadLine
-        >> proc.BeginOutputReadLine
-        >> proc.WaitForExit |> (fun x -> x();)
+        if p.IsUsingSeperateWindow = false then
+            proc.BeginErrorReadLine >> proc.BeginOutputReadLine |> (fun x -> x();)
+        proc.WaitForExit()
     )
  }
