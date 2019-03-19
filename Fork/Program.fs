@@ -5,6 +5,7 @@ open System
 open System.Diagnostics
 open System.IO
 
+// TODO the json should have the option to tell if the process should be run in a separate window.
 type ProcessStartInfoProvider = FSharp.Data.JsonProvider<"""
 [
     {
