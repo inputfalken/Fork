@@ -81,15 +81,16 @@ let internal Create startInfo processOutput output =
                                                 WorkingDirectory = startInfo.WorkingDirectory
                                               ))
 
-    proc.Exited |> Event.add (fun x -> (sprintf "Process exited with code '%i'." proc.ExitCode) |> output)
-    proc.OutputDataReceived
-    |> Event.map (fun x -> { Data = x.Data; Type = Stdout.Output })
-    |> Event.merge (
-           proc.ErrorDataReceived
-           |> Event.map (fun x -> { Data = x.Data; Type = Stdout.Error })
-       )
-    |> Event.filter (fun x -> not (x.Data |> String.IsNullOrWhiteSpace))
-    |> Event.add (processOutput)
+    if startInfo.UseSeperateWindow = false then
+        proc.Exited |> Event.add (fun x -> (sprintf "Process exited with code '%i'." proc.ExitCode) |> output)
+        proc.OutputDataReceived
+        |> Event.map (fun x -> { Data = x.Data; Type = Stdout.Output })
+        |> Event.merge (
+               proc.ErrorDataReceived
+               |> Event.map (fun x -> { Data = x.Data; Type = Stdout.Error })
+           )
+        |> Event.filter (fun x -> not (x.Data |> String.IsNullOrWhiteSpace))
+        |> Event.add (processOutput)
     { Process = proc; Alias = startInfo.Alias; IsUsingSeperateWindow = startInfo.UseSeperateWindow }
 
 let internal Run p output = async {
