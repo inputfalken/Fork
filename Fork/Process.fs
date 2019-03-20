@@ -10,7 +10,9 @@ type ProcessExit = { Code : int; Time : DateTime }
 type Stdout = | Error | Output
 type OutputType = { Data : string; Type : Stdout }
 type FProcess = { Process : Process; Alias : string; IsUsingSeperateWindow : bool }
-type StartInfo = { WorkingDirectory : string; FileName : string; Arguments : string; Alias : string; UseSeperateWindow : bool }
+type ProcessTask = { WorkingDirectory : string; FileName : string; Arguments : string; Alias : string; UseSeperateWindow : bool }
+type Task = { Tasks : ProcessTask []; Alias : string }
+type StartInfo = { Processes : FProcess []; Alias : String }
 
 // Taken from https://github.com/aspnet/Extensions/blob/ffb7c20fb22a31ac31d3a836a8455655867e8e16/shared/Microsoft.Extensions.Process.Sources/ProcessHelper.cs
 let internal RecursiveKill (proc : Process) (timeout : TimeSpan) =
@@ -58,30 +60,30 @@ let internal RecursiveKill (proc : Process) (timeout : TimeSpan) =
         children |> Seq.map (fun x -> runProcessAndWaitForExit "kill" (sprintf "-TERM %i" x) timeout) |> List.ofSeq
 
 
-let internal Create startInfo processOutput output =
-    let proc = match startInfo.UseSeperateWindow with
+let internal Create task processOutput output =
+    let proc = match task.UseSeperateWindow with
                | true -> new Process(StartInfo = new ProcessStartInfo(
-                                                Arguments = startInfo.Arguments,
+                                                Arguments = task.Arguments,
                                                 CreateNoWindow = true,
-                                                FileName = startInfo.FileName,
+                                                FileName = task.FileName,
                                                 RedirectStandardError = false,
                                                 RedirectStandardInput = false,
                                                 RedirectStandardOutput = false,
                                                 UseShellExecute = true,
-                                                WorkingDirectory = startInfo.WorkingDirectory
+                                                WorkingDirectory = task.WorkingDirectory
                                               ))
                | false -> new Process(StartInfo = new ProcessStartInfo(
-                                                Arguments = startInfo.Arguments,
+                                                Arguments = task.Arguments,
                                                 CreateNoWindow = true,
-                                                FileName = startInfo.FileName,
+                                                FileName = task.FileName,
                                                 RedirectStandardError = true,
                                                 RedirectStandardInput = true,
                                                 RedirectStandardOutput = true,
                                                 UseShellExecute = false,
-                                                WorkingDirectory = startInfo.WorkingDirectory
+                                                WorkingDirectory = task.WorkingDirectory
                                               ))
 
-    if startInfo.UseSeperateWindow = false then
+    if task.UseSeperateWindow = false then
         proc.Exited |> Event.add (fun x -> (sprintf "Process exited with code '%i'." proc.ExitCode) |> output)
         proc.OutputDataReceived
         |> Event.map (fun x -> { Data = x.Data; Type = Stdout.Output })
@@ -91,7 +93,7 @@ let internal Create startInfo processOutput output =
            )
         |> Event.filter (fun x -> not (x.Data |> String.IsNullOrWhiteSpace))
         |> Event.add (processOutput)
-    { Process = proc; Alias = startInfo.Alias; IsUsingSeperateWindow = startInfo.UseSeperateWindow }
+    { Process = proc; Alias = task.Alias; IsUsingSeperateWindow = task.UseSeperateWindow }
 
 let internal Run p output = async {
     return using p.Process (fun proc ->

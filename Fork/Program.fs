@@ -8,31 +8,41 @@ open System.IO
 // TODO the json should have the option to tell if the process should be run in a separate window.
 type ProcessStartInfoProvider = FSharp.Data.JsonProvider<"""
 [
-    {
-        "workingDirectory": "path",
-        "fileName": "dotnet",
-        "arguments": "run",
-        "alias": "name",
-        "useSeperateWindow" : "true"
-    },
-    {
-        "workingDirectory": "path",
-        "fileName": "dotnet",
-        "arguments": "run",
-        "alias": "name",
-        "useSeperateWindow" : ""
-    }
+   {
+      "alias":"group",
+      "tasks":[
+         {
+            "workingDirectory":"path",
+            "fileName":"dotnet",
+            "arguments":"run",
+            "alias":"name",
+            "useSeperateWindow":"true"
+         },
+         {
+            "workingDirectory":"path",
+            "fileName":"dotnet",
+            "arguments":"run",
+            "alias":"name",
+            "useSeperateWindow":""
+         }
+      ]
+   }
 ]
 """>
 
 [<EntryPoint>]
 let main argv =
-    let stop p = try (p, TimeSpan.FromSeconds 30.) ||> Process.RecursiveKill |> ignore with :? System.InvalidOperationException as x -> ()
     let isAlive (p : Process) = try p.Responding |> ignore; "running" with :? System.InvalidOperationException as x -> "stopped"
     let start p = p |> (fun x -> Process.Run x Console.WriteLine) |> Async.Start
+    let stop (p : FProcess) = try (p.Process, TimeSpan.FromSeconds 30.)
+                                  ||> Process.RecursiveKill
+                                  |> List.filter (fun x -> x.ExitCode <> 0)
+                                  |> List.iter (fun x -> printfn "Warning '%s' did not exit properly '%s' (%i)" p.Alias x.Output x.ExitCode)
+                              with :? System.InvalidOperationException as x -> ()
 
     let rec session input processes processFactory =
-        let stopProcesses p = p |> List.iter (fun x -> x.Process |> stop)
+        // TODO Close down all `processess` before exiting the session.
+        let stopProcesses pList = (pList : FProcess list) |> List.iter (fun x -> printfn "Stopping '%s'..." x.Alias; x |> stop)
         match input() with
         | "restart" ->
             processes |> stopProcesses
@@ -44,7 +54,7 @@ let main argv =
         | "killDotnet" ->
             Process.GetProcessesByName("dotnet")
             |> Array.filter (fun x -> x.Id <> Process.GetCurrentProcess().Id)
-            |> Array.map stop
+            |> Array.map Process.RecursiveKill
             |> ignore
             (input, [], processFactory) |||> session
         | "exit" -> processes
@@ -54,6 +64,8 @@ let main argv =
                   |> File.ReadAllText
                   |> ProcessStartInfoProvider.Parse
                   |> Seq.map (fun x -> {
+                      Alias = x.Alias
+                      Tasks = x.Tasks |> Array.map (fun x -> {
                           WorkingDirectory = x.WorkingDirectory
                           FileName = x.FileName
                           Arguments = x.Arguments
@@ -61,15 +73,18 @@ let main argv =
                           UseSeperateWindow = match x.UseSeperateWindow with
                                               | Some x -> x
                                               | None -> false
+
                       })
+                  })
                   |> Seq.toList
-    let processFactory() = arguments |> List.map (fun x -> Process.Create x (fun y -> ColoredPrintf.colorprintfn "%s $yellow[->] %s" x.Alias y.Data) Console.WriteLine)
+
+    let processWithStdout x = Process.Create x (fun y -> ColoredPrintf.colorprintfn "%s $yellow[->] %s" x.Alias y.Data) Console.WriteLine
+
+    let processFactory() = arguments
+                           |> List.map (fun x -> { Processes = x.Tasks |> Array.map processWithStdout; Alias = x.Alias })
+                           |> List.collect (fun x -> x.Processes |> Array.toList)
     let processes = processFactory()
     processes |> List.iter start
 
-    // BUG This event is not valid of the session spawns new processes. This should be regisered and deregistered inside the session
-    AppDomain.CurrentDomain.ProcessExit
-    |> Event.merge (Console.CancelKeyPress |> Event.map (fun _ -> EventArgs.Empty))
-    |> Event.add (fun _ -> processes |> List.iter (fun x -> stop x.Process))
-    session Console.ReadLine processes processFactory |> List.iter (fun x -> x.Alias |> printfn "Stopping '%s'..."; x.Process |> stop)
+    session Console.ReadLine processes processFactory |> List.iter (fun x -> x.Alias |> printfn "Stopping '%s'..."; x |> stop)
     0

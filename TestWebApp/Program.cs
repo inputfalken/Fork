@@ -14,7 +14,6 @@ namespace TestWebApp
     {
         public static void Main(string[] args)
         {
-            throw new ArgumentException("foo");
             CreateWebHostBuilder(args)
                 .UseUrls("http://localhost:5002/")
                 .Build()

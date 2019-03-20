@@ -12,7 +12,7 @@ namespace TestWebApp2 {
     public class Program {
         public static void Main(string[] args) {
             CreateWebHostBuilder(args)
-                .UseUrls("http://localhost:5002/")
+                .UseUrls("http://localhost:5001/")
                 .Build()
                 .Run();
         }
