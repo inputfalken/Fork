@@ -1,20 +1,20 @@
-module internal FOrchestrator.Process
+module public Fork.Process
 open System.Diagnostics
 open System
 open System.IO
 open System.Runtime.InteropServices
 
-type ProcessResult = { ExitCode : int; Output : string }
-type ProcessExit = { Code : int; Time : DateTime }
-type Stdout = | Error | Output
-type OutputType = { Data : string; Type : Stdout }
-type FProcess = { Process : Process; Alias : string; IsUsingSeperateWindow : bool }
-type ProcessTask = { WorkingDirectory : string; FileName : string; Arguments : string; Alias : string; UseSeperateWindow : bool }
-type Task = { Tasks : ProcessTask []; Alias : string }
-type StartInfo = { Processes : FProcess []; Alias : String }
+type public ProcessResult = { ExitCode : int; Output : string }
+type public ProcessExit = { Code : int; Time : DateTime }
+type public Stdout = | Error | Output
+type public OutputType = { Data : string; Type : Stdout }
+type public FProcess = { Process : Process; Alias : string; IsUsingSeperateWindow : bool }
+type public ProcessTask = { WorkingDirectory : string; FileName : string; Arguments : string; Alias : string; UseSeperateWindow : bool }
+type public Task = { Tasks : ProcessTask []; Alias : string }
+type public StartInfo = { Processes : FProcess []; Alias : String }
 
 // Taken from https://github.com/aspnet/Extensions/blob/ffb7c20fb22a31ac31d3a836a8455655867e8e16/shared/Microsoft.Extensions.Process.Sources/ProcessHelper.cs
-let internal RecursiveKill (proc : Process) (timeout : TimeSpan) =
+let public RecursiveKill (proc : Process) (timeout : TimeSpan) =
     let runProcessAndWaitForExit fileName arguments (timeout : TimeSpan) =
         let proc = new Process(StartInfo = new ProcessStartInfo(
                                          Arguments = arguments,
@@ -64,7 +64,7 @@ let internal RecursiveKill (proc : Process) (timeout : TimeSpan) =
         |> Set.toList
 
 
-let internal Create task processOutput output =
+let public Create task processOutput output =
     let proc = match task.UseSeperateWindow with
                | true -> new Process(StartInfo = new ProcessStartInfo(
                                                 Arguments = task.Arguments,
@@ -99,7 +99,7 @@ let internal Create task processOutput output =
         |> Event.add (processOutput)
     { Process = proc; Alias = task.Alias; IsUsingSeperateWindow = task.UseSeperateWindow }
 
-let internal Run p output = async {
+let public Run p output = async {
     return using p.Process (fun proc ->
         proc.Start() |> ignore
         sprintf "Starting process %s with id %i" proc.ProcessName proc.Id |> output

@@ -1,8 +1,7 @@
-﻿open BlackFox.ColoredPrintf
-open FOrchestrator
-open FOrchestrator.Process
-open System
+﻿open System
+open Fork.Process
 open System.Diagnostics
+open BlackFox.ColoredPrintf
 open System.IO
 
 // TODO the json should have the option to tell if the process should be run in a separate window.
@@ -32,10 +31,11 @@ type ProcessStartInfoProvider = FSharp.Data.JsonProvider<"""
 
 [<EntryPoint>]
 let main argv =
+    
     let isAlive (p : Process) = try p.Responding |> ignore; "running" with :? System.InvalidOperationException as x -> "stopped"
-    let start p = p |> (fun x -> Process.Run x Console.WriteLine) |> Async.Start
+    let start p = p |> (fun x -> Fork.Process.Run x Console.WriteLine) |> Async.Start
     let stop (p : FProcess) = try (p.Process, TimeSpan.FromSeconds 30.)
-                                  ||> Process.RecursiveKill
+                                  ||> Fork.Process.RecursiveKill
                                   |> List.filter (fun x -> x.ExitCode <> 0)
                                   |> List.iter (fun x -> printfn "Warning '%s' did not exit properly '%s' (%i)" p.Alias x.Output x.ExitCode)
                               with :? System.InvalidOperationException as x -> ()
@@ -54,7 +54,7 @@ let main argv =
         | "killDotnet" ->
             Process.GetProcessesByName("dotnet")
             |> Array.filter (fun x -> x.Id <> Process.GetCurrentProcess().Id)
-            |> Array.map Process.RecursiveKill
+            |> Array.map Fork.Process.RecursiveKill
             |> ignore
             (input, [], processFactory) |||> session
         | "exit" -> processes
@@ -78,7 +78,7 @@ let main argv =
                   })
                   |> Seq.toList
 
-    let processWithStdout x = Process.Create x (fun y -> ColoredPrintf.colorprintfn "%s $yellow[->] %s" x.Alias y.Data) Console.WriteLine
+    let processWithStdout x = Fork.Process.Create x (fun y -> ColoredPrintf.colorprintfn "%s $yellow[->] %s" x.Alias y.Data) Console.WriteLine
 
     let processFactory() = arguments
                            |> List.map (fun x -> { Processes = x.Tasks |> Array.map processWithStdout; Alias = x.Alias })
