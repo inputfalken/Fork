@@ -1,7 +1,6 @@
 module internal FOrchestrator.Process
 open System.Diagnostics
 open System
-open System.Collections.Generic
 open System.IO
 open System.Runtime.InteropServices
 
@@ -35,29 +34,34 @@ let internal RecursiveKill (proc : Process) (timeout : TimeSpan) =
         | Some x -> { ExitCode = proc.ExitCode; Output = x }
         | None -> { ExitCode = proc.ExitCode; Output = String.Empty }
 
-
     let (|Int|_|) (str : string) =
        match System.Int32.TryParse(str) with
        | (true, int) -> Some(int)
        | _ -> None
 
-    let rec getChildIdsUnix parentId (children : HashSet<int>) timeout =
+    let rec grepChildProcesses set parentId timeout =
+        let rec processLine line pId (set : Set<int>) =
+            use reader = new StringReader(line)
+            match reader.ReadLine() with
+            | Int id ->
+                id |> set.Add |> ignore
+                (line, id, set) |||> processLine
+            | _ -> (set, pId)
+
+
         let result = runProcessAndWaitForExit "pgrep" (sprintf "-P %i" parentId) timeout
-        if result.ExitCode = 0 && String.IsNullOrWhiteSpace(result.Output) = false then
-            use reader = new StringReader(result.Output)
-            while true do
-                match reader.ReadLine() with
-                | Int id ->
-                    id |> children.Add |> ignore
-                    (id, children, timeout) |||> getChildIdsUnix
-                | _ -> ()
+        if result.ExitCode = 0 then
+            processLine result.Output parentId set |> (fun (x, y) -> grepChildProcesses x y timeout)
+        else set
+
 
     if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then
         [ runProcessAndWaitForExit "taskkill" (sprintf "/T /F /PID %i" proc.Id) timeout ]
     else
-        let children = new HashSet<int>()
-        (proc.Id, children, timeout) |||> getChildIdsUnix
-        children |> Seq.map (fun x -> runProcessAndWaitForExit "kill" (sprintf "-TERM %i" x) timeout) |> List.ofSeq
+        (Set.empty, proc.Id, timeout)
+        |||> grepChildProcesses
+        |> Set.map (fun x -> runProcessAndWaitForExit "kill" (sprintf "-TERM %i" x) timeout)
+        |> Set.toList
 
 
 let internal Create task processOutput output =
