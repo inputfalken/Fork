@@ -1,7 +1,10 @@
 ﻿open System
+open System
+open System
 open Fork.Process
 open System.Diagnostics
 open BlackFox.ColoredPrintf
+open Fork.Process
 open System.IO
 
 // TODO the json should have the option to tell if the process should be run in a separate window.
@@ -29,9 +32,20 @@ type ProcessStartInfoProvider = FSharp.Data.JsonProvider<"""
 ]
 """>
 
+type ExitResolver = {
+   Handler : Handler<Choice<EventArgs, ConsoleCancelEventArgs>>
+   Event : IEvent<Choice<EventArgs, ConsoleCancelEventArgs>>
+ }
+
+type SessionState = {
+   InputFunction : unit -> string
+   Processes : FProcess list
+   ProcessSpawner : unit -> FProcess list
+   ExitResolver : ExitResolver option
+ }
 [<EntryPoint>]
 let main argv =
-    
+
     let isAlive (p : Process) = try p.Responding |> ignore; "running" with :? System.InvalidOperationException as x -> "stopped"
     let start p = p |> (fun x -> Fork.Process.Run x Console.WriteLine) |> Async.Start
     let stop (p : FProcess) = try (p.Process, TimeSpan.FromSeconds 30.)
@@ -40,25 +54,44 @@ let main argv =
                                   |> List.iter (fun x -> printfn "Warning '%s' did not exit properly '%s' (%i)" p.Alias x.Output x.ExitCode)
                               with :? System.InvalidOperationException as x -> ()
 
-    let rec session input processes processFactory =
-        // TODO Close down all `processess` before exiting the session.
+    let rec session (state : SessionState) =
+        state.ExitResolver |> Option.iter (fun x -> x.Event.RemoveHandler x.Handler)
         let stopProcesses pList = (pList : FProcess list) |> List.iter (fun x -> printfn "Stopping '%s'..." x.Alias; x |> stop)
-        match input() with
-        | "restart" ->
-            processes |> stopProcesses
-            let processes = processFactory()
+        // This can cause a stackoverflow exception if it runs for to long...
+        let exitResolver = if state.Processes.IsEmpty then
+                                None
+                            else
+                                 {
+                                     Event = System.AppDomain.CurrentDomain.ProcessExit
+                                             |> Event.map (fun x -> Choice1Of2 x)
+                                             |> Event.merge (Console.CancelKeyPress |> Event.map (fun x -> Choice2Of2 x))
+                                     Handler = Handler<Choice<EventArgs, ConsoleCancelEventArgs>>(fun _ arg -> printfn "%A" arg; state.Processes |> stopProcesses)
+                                  } |> (fun x -> x.Event.AddHandler x.Handler; Some x)
+
+        let nextSessionUnmodified() = { InputFunction = state.InputFunction; Processes = state.Processes; ProcessSpawner = state.ProcessSpawner; ExitResolver = exitResolver } |> session
+
+        let nextSessionWithStoppedProcceses() =
+            state.Processes |> stopProcesses
+            { InputFunction = state.InputFunction; Processes = []; ProcessSpawner = state.ProcessSpawner; ExitResolver = exitResolver } |> session
+
+        let nextSessionWithRestartedProccesses() =
+            state.Processes |> stopProcesses
+            let processes = state.ProcessSpawner()
             processes |> List.iter start
-            (input, processes, processFactory) |||> session
-        | "stop" -> processes |> stopProcesses; (input, [], processFactory) |||> session
-        | "list" -> processes |> List.iter (fun x -> printfn "%s (%s) = %s %s %s" x.Alias (isAlive x.Process) x.Process.StartInfo.FileName x.Process.StartInfo.Arguments x.Process.StartInfo.WorkingDirectory); (input, processes, processFactory) |||> session
-        | "killDotnet" ->
-            Process.GetProcessesByName("dotnet")
-            |> Array.filter (fun x -> x.Id <> Process.GetCurrentProcess().Id)
-            |> Array.map Fork.Process.RecursiveKill
-            |> ignore
-            (input, [], processFactory) |||> session
-        | "exit" -> processes
-        | _ -> (input, processes, processFactory) |||> session
+            {
+              InputFunction = state.InputFunction
+              Processes = processes
+              ProcessSpawner = state.ProcessSpawner
+              ExitResolver = exitResolver
+            } |> session
+
+        match state.InputFunction() with
+        | "restart" -> nextSessionWithRestartedProccesses()
+        | "stop" -> nextSessionWithStoppedProcceses()
+        | "list" -> state.Processes |> List.iter (fun x -> printfn "%s (%s) = %s %s %s" x.Alias (isAlive x.Process) x.Process.StartInfo.FileName x.Process.StartInfo.Arguments x.Process.StartInfo.WorkingDirectory)
+                    nextSessionUnmodified()
+        | "exit" -> state.Processes
+        | _ -> nextSessionUnmodified()
 
     let arguments = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".fork.json")
                   |> File.ReadAllText
@@ -86,5 +119,12 @@ let main argv =
     let processes = processFactory()
     processes |> List.iter start
 
-    session Console.ReadLine processes processFactory |> List.iter (fun x -> x.Alias |> printfn "Stopping '%s'..."; x |> stop)
+    {
+        InputFunction = Console.ReadLine
+        Processes = processes
+        ProcessSpawner = processFactory
+        ExitResolver = None
+    }
+    |> session
+    |> ignore
     0
