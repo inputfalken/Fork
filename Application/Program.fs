@@ -85,12 +85,12 @@ let main argv =
             let foundGroupInSpawned = Option.Some spawns
                                       |> Option.map (fun x -> x |> List.filter (fun y -> y.Alias = input))
                                       |> Option.filter (fun x -> not x.IsEmpty)
-                                      |> Option.map (fun x -> x |> List.collect (fun x -> x.Processes |> Array.toList))
+                                      |> Option.map (fun x -> x |> List.collect (fun x -> x.Processes))
 
             let searchResult = match foundInExistingProcess |> Option.orElse foundGroupInSpawned with
                                 | Some x -> x
                                 | None -> spawns
-                                          |> List.collect (fun x -> x.Processes |> Array.toList)
+                                          |> List.collect (fun x -> x.Processes)
                                           |> List.filter (fun x -> x.Alias = input)
 
             let processes = if searchResult.IsEmpty then
@@ -134,13 +134,13 @@ let main argv =
                                               | Some x -> x
                                               | None -> false
 
-                      })
+                      }) |> Array.toList
                   })
                   |> Seq.toList
 
     let processWithStdout x = Fork.Process.Create x (fun y -> ColoredPrintf.colorprintfn "%s $yellow[->] %s" x.Alias y.Data) Console.WriteLine
 
-    let processFactory() = arguments |> List.map (fun x -> { Processes = x.Tasks |> Array.map processWithStdout; Alias = x.Alias })
+    let processFactory() = arguments |> List.map (fun x -> { Processes = x.Tasks |> List.map processWithStdout; Alias = x.Alias })
 
     {
         InputFunction = Console.ReadLine

@@ -10,8 +10,8 @@ type public Stdout = | Error | Output
 type public OutputType = { Data : string; Type : Stdout }
 type public FProcess = { Process : Process; Alias : string; IsUsingSeperateWindow : bool }
 type public ProcessTask = { WorkingDirectory : string; FileName : string; Arguments : string; Alias : string; UseSeperateWindow : bool }
-type public Task = { Tasks : ProcessTask []; Alias : string }
-type public StartInfo = { Processes : FProcess []; Alias : String }
+type public Task = { Tasks : ProcessTask list; Alias : string }
+type public StartInfo = { Processes : FProcess list; Alias : String }
 
 // Taken from https://github.com/aspnet/Extensions/blob/ffb7c20fb22a31ac31d3a836a8455655867e8e16/shared/Microsoft.Extensions.Process.Sources/ProcessHelper.cs
 let public RecursiveKill (proc : Process) (timeout : TimeSpan) =
