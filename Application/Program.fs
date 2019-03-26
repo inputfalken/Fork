@@ -65,9 +65,6 @@ let main argv =
                                              |> Event.merge (Console.CancelKeyPress |> Event.map (fun x -> Choice2Of2 x))
                                      Handler = Handler<Choice<EventArgs, ConsoleCancelEventArgs>>(fun _ arg -> sprintf "%A" arg |> context.OutputFunction; context.Processes |> stopProcesses)
                                   } |> (fun x -> x.Event.AddHandler x.Handler; Some x)
-
-        let nextSessionUnmodified() = { InputFunction = context.InputFunction; OutputFunction = context.OutputFunction; Processes = context.Processes; ProcessSpawner = context.ProcessSpawner; ExitResolver = exitResolver } |> session
-
         let stopSession() =
             if context.Processes.IsEmpty then
                 context.OutputFunction "There's no active procceses."
@@ -150,9 +147,9 @@ let main argv =
         | "list" -> context.Processes |>
                     List.map (fun x -> sprintf "%s (%s) = %s %s %s" x.Alias (isAlive x.Process) x.Process.StartInfo.FileName x.Process.StartInfo.Arguments x.Process.StartInfo.WorkingDirectory)
                     |> List.iter context.OutputFunction
-                    nextSessionUnmodified()
+                    context |> session
         | "exit" -> context.Processes
-        | _ -> nextSessionUnmodified()
+        | _ -> context |> session
 
 
 
