@@ -69,8 +69,12 @@ let main argv =
         let nextSessionUnmodified() = { InputFunction = context.InputFunction; OutputFunction = context.OutputFunction; Processes = context.Processes; ProcessSpawner = context.ProcessSpawner; ExitResolver = exitResolver } |> session
 
         let stopSession() =
-            context.Processes |> stopProcesses
-            { InputFunction = context.InputFunction; OutputFunction = context.OutputFunction; Processes = []; ProcessSpawner = context.ProcessSpawner; ExitResolver = exitResolver } |> session
+            if context.Processes.IsEmpty then
+                context.OutputFunction "There's no active procceses."
+                context |> session
+            else
+                context.Processes |> stopProcesses
+                { InputFunction = context.InputFunction; OutputFunction = context.OutputFunction; Processes = []; ProcessSpawner = context.ProcessSpawner; ExitResolver = exitResolver } |> session
 
         let startSession() =
             context.OutputFunction "Input your alias."
@@ -104,36 +108,40 @@ let main argv =
 
 
         let restartSession() =
-            context.OutputFunction "Input your alias."
-            let input = context.InputFunction()
+            if context.Processes.IsEmpty then
+                context.OutputFunction "There's no active procceses."
+                context |> session
+            else
+                context.OutputFunction "Input your alias."
+                let input = context.InputFunction()
 
-            let searchResult = context.Processes
-                                       |> List.filter (fun x -> x.Alias = input)
-                                       |> Option.Some
-                                       |> Option.filter (fun x -> not x.IsEmpty)
+                let searchResult = context.Processes
+                                           |> List.filter (fun x -> x.Alias = input)
+                                           |> Option.Some
+                                           |> Option.filter (fun x -> not x.IsEmpty)
 
-            let processes = match searchResult with
-                            | Some x ->
-                                x |> List.iter (fun x ->
-                                    // If the argumets supplied for creating the process is exposed
-                                    // I do not need to spawn process objects.
-                                    stop x
-                                )
-                                let newProcesses = context.ProcessSpawner()
-                                                 |> List.collect (fun x -> x.Processes)
-                                                 |> List.filter (fun x -> x.Alias = input)
+                let processes = match searchResult with
+                                | Some x ->
+                                    x |> List.iter (fun x ->
+                                        // If the argumets supplied for creating the process is exposed
+                                        // I do not need to spawn process objects.
+                                        stop x
+                                    )
+                                    let newProcesses = context.ProcessSpawner()
+                                                     |> List.collect (fun x -> x.Processes)
+                                                     |> List.filter (fun x -> x.Alias = input)
 
-                                let res = (context.Processes |> List.filter (fun x -> x.Alias <> input))
-                                newProcesses |> List.iter start
-                                res |> List.append newProcesses
-                            | _ -> context.Processes
-            {
-              InputFunction = context.InputFunction
-              OutputFunction = context.OutputFunction
-              Processes = processes
-              ProcessSpawner = context.ProcessSpawner
-              ExitResolver = exitResolver
-            } |> session
+                                    let res = (context.Processes |> List.filter (fun x -> x.Alias <> input))
+                                    newProcesses |> List.iter start
+                                    res |> List.append newProcesses
+                                | _ -> context.Processes
+                {
+                  InputFunction = context.InputFunction
+                  OutputFunction = context.OutputFunction
+                  Processes = processes
+                  ProcessSpawner = context.ProcessSpawner
+                  ExitResolver = exitResolver
+                } |> session
 
         match context.InputFunction() with
         | "restart" -> restartSession()
