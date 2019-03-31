@@ -52,14 +52,11 @@ let main argv =
                   |> Seq.toList
 
     let processWithStdout x = Fork.Process.Create x (fun y -> ColoredPrintf.colorprintfn "%s $yellow[->] %s" x.Alias y.Data) Console.WriteLine
-
-    let processFactory() = arguments |> List.map (fun x -> { Processes = x.Tasks |> List.map processWithStdout; Alias = x.Alias })
-
     {
         InputFunction = Console.ReadLine
         OutputFunction = Console.WriteLine
-        Processes = []
-        ProcessSpawner = processFactory
+        ActiveProcesses = []
+        Processes = arguments |> List.map (fun x -> { Processes = x.Tasks |> List.map processWithStdout; Alias = x.Alias })
         ExitResolver = None
     }
     |> Session.start
