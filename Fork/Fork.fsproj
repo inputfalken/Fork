@@ -5,8 +5,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Compile Include="InputAnalyzer.fs" />
       <Compile Include="Process.fs" />
+      <Compile Include="InputAnalyzer.fs" />
     </ItemGroup>
 
     <ItemGroup>
