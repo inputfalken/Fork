@@ -3,7 +3,7 @@ open FParsec
 
 type public CommandInput = { Command : string; Argument : string }
 
-let public ParseInput input aliases commands =
+let public ParseCommand input aliases commands =
     let aliases = aliases
                  |> List.map pstring
                  |> List.reduce (<|>)
@@ -13,9 +13,6 @@ let public ParseInput input aliases commands =
 
     let argumentParser = commands .>> spaces .>>. aliases |>> (fun (x, y) -> { Command = x; Argument = y })
 
-
-
     match run argumentParser input with
-    | Success(x, y, z) -> printfn "%A" x
-    | Failure(x, y, z) -> printf "%A" x
-    ()
+    | Success(x, y, z) -> Result.Ok x
+    | Failure(x, y, z) -> Result.Error(sprintf "%A" x)
