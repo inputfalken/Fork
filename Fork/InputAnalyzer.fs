@@ -1,11 +1,19 @@
 module Fork.InputAnalyzer
 open FParsec
-open Process
 
-type public CommandInput = { Command : char list; Argument : char list }
+type public CommandInput = { Command : string; Argument : string }
 
-let public ParseInput input (processes : FProcess list) =
-    let argumentParser = many1 letter .>> spaces .>>. many1 letter |>> (fun (x, y) -> { Command = x; Argument = y })
+let public ParseInput input aliases commands =
+    let aliases = aliases
+                 |> List.map pstring
+                 |> List.reduce (<|>)
+    let commands = commands
+                 |> List.map pstring
+                 |> List.reduce (<|>)
+
+    let argumentParser = commands .>> spaces .>>. aliases |>> (fun (x, y) -> { Command = x; Argument = y })
+
+
 
     match run argumentParser input with
     | Success(x, y, z) -> printfn "%A" x
