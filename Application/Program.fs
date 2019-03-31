@@ -52,7 +52,7 @@ let main argv =
 
     let processWithStdout x = Fork.Process.Create x (fun y -> ColoredPrintf.colorprintfn "%s $yellow[->] %s" x.Alias y.Data) Console.WriteLine
     {
-        InputFunction = Console.ReadLine
+        InputFunction = Console.ReadLine >> (fun x -> InputAnalyzer.ParseInput x [] ; x)
         OutputFunction = Console.WriteLine
         ActiveProcesses = []
         ProcessFactory = processWithStdout

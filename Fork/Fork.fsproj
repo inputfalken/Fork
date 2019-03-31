@@ -5,7 +5,12 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <Compile Include="InputAnalyzer.fs" />
       <Compile Include="Process.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="FParsec" Version="1.0.3" />
     </ItemGroup>
 
 </Project>
