@@ -6,7 +6,6 @@ open Fork.Process
 open BlackFox.ColoredPrintf
 open System.IO
 
-// TODO the json should have the option to tell if the process should be run in a separate window.
 type ProcessStartInfoProvider = FSharp.Data.JsonProvider<"""
 [
    {

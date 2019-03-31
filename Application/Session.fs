@@ -1,6 +1,5 @@
 module Fork.Session
 open Fork.Process
-open Fork.Process
 open System.Diagnostics
 open System
 
