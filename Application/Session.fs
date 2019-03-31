@@ -57,24 +57,20 @@ let rec internal start (context : Context) =
     let startSession() =
         context.OutputFunction "Input your alias."
         let input = context.InputFunction()
-        let isNotInRunningProcesses = context.ActiveProcesses
-                                   |> List.filter (fun x -> x.Alias = input)
-                                   |> Option.Some
-                                   |> Option.filter (fun x -> x.IsEmpty)
+        let searchResult = Result.Ok context.ActiveProcesses
+                         |> Result.map (List.filter (fun x -> x.Alias = input))
+                         |> Result.bind (fun x -> if x.IsEmpty then Result.Ok context.Processes else Result.Error(sprintf "There's already an process running under the alias '%s'." input))
+                         |> Result.map (List.collect (fun x -> x.Processes))
+                         |> Result.map (List.filter (fun x -> x.Alias = input))
+                         |> Result.bind (fun x -> if x.IsEmpty then Result.Error(sprintf "Could not find a process with the input '%s'." input) else Result.Ok x.[0])
 
-        let newProcess = context.Processes
-                       |> Option.Some
-                       |> Option.map (List.collect (fun x -> x.Processes))
-                       |> Option.map (List.filter (fun x -> x.Alias = input))
-                       |> Option.filter (fun x -> not x.IsEmpty)
-                       |> Option.map (fun x -> x.[0])
-                       |> Option.map (fun x -> [ x ])
-
-        let processes = match newProcess with
-                        | Some x ->
-                            x |> List.iter startProcess
-                            x |> List.append context.ActiveProcesses
-                        | None -> context.ActiveProcesses
+        let processes = match searchResult with
+                        | Ok x ->
+                            x |> startProcess
+                            context.ActiveProcesses |> List.append [ x ]
+                        | Result.Error x ->
+                            x |> sprintf "ERROR: %s" |> context.OutputFunction
+                            context.ActiveProcesses
         {
 
           InputFunction = context.InputFunction
@@ -105,11 +101,12 @@ let rec internal start (context : Context) =
                             | Ok x ->
                                 stopProcess x
                                 x.Arguments |> context.ProcessFactory |> startProcess
-                                context.ActiveProcesses |> List.append [ x ]
+                                context.ActiveProcesses
+                                |> List.filter (fun x -> x.Alias <> input)
+                                |> List.append [ x ]
                             | Result.Error x ->
                                 sprintf "ERROR: %s." x |> context.OutputFunction
                                 context.ActiveProcesses
-
 
             {
               InputFunction = context.InputFunction
