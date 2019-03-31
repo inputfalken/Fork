@@ -60,6 +60,7 @@ let rec internal start (context : Context) =
         let searchResult = Result.Ok context.ActiveProcesses
                          |> Result.map (List.filter (fun x -> x.Alias = input))
                          |> Result.bind (fun x -> if x.IsEmpty then Result.Ok context.Processes else Result.Error(sprintf "There's already an process running under the alias '%s'." input))
+                         |> Result.bind (fun x -> if x |> Seq.exists ( fun x -> x.Alias = input) then Result.Error "Group aliases are currently not supported." else Result.Ok x)
                          |> Result.map (List.collect (fun x -> x.Processes))
                          |> Result.map (List.filter (fun x -> x.Alias = input))
                          |> Result.bind (fun x -> if x.IsEmpty then Result.Error(sprintf "Could not find a process with the input '%s'." input) else Result.Ok x.[0])
@@ -121,9 +122,10 @@ let rec internal start (context : Context) =
     | "restart" -> restartSession()
     | "start" -> startSession()
     | "stop" -> stopSession()
-    | "list" -> context.ActiveProcesses |>
-                List.map (fun x -> sprintf "%s (%s) = %s %s %s" x.Alias (isAlive x.Process) x.Process.StartInfo.FileName x.Process.StartInfo.Arguments x.Process.StartInfo.WorkingDirectory)
-                |> List.iter context.OutputFunction
-                context |> start
+    | "list" -> if context.ActiveProcesses.IsEmpty then context.OutputFunction "There's no active processes."; context |> start
+                else
+                    context.ActiveProcesses |> List.map (fun x -> sprintf "%s (%s) = %s %s %s" x.Alias (isAlive x.Process) x.Process.StartInfo.FileName x.Process.StartInfo.Arguments x.Process.StartInfo.WorkingDirectory)
+                    |> List.iter context.OutputFunction
+                    context |> start
     | "exit" -> context.ActiveProcesses
     | _ -> context |> start
