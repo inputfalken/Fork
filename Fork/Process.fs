@@ -65,6 +65,11 @@ let public RecursiveKill (proc : Process) (timeout : TimeSpan) =
 
 
 let public Create task processOutput output =
+    task.WorkingDirectory
+    |> Option.Some
+    |> Option.filter (fun x -> not (Directory.Exists x))
+    |> Option.iter (fun x -> raise (ArgumentException (sprintf "The value '%s' is not a valid directory path." x)))
+
     let proc = match task.UseSeperateWindow with
                | true -> new Process(StartInfo = new ProcessStartInfo(
                                                 Arguments = task.Arguments,
