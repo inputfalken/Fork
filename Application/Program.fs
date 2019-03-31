@@ -56,6 +56,7 @@ let main argv =
         InputFunction = Console.ReadLine
         OutputFunction = Console.WriteLine
         ActiveProcesses = []
+        ProcessFactory = processWithStdout
         Processes = arguments |> List.map (fun x -> { Processes = x.Tasks |> List.map processWithStdout; Alias = x.Alias })
         ExitResolver = None
     }

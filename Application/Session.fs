@@ -1,5 +1,6 @@
 module Fork.Session
 open Fork.Process
+open Fork.Process
 open System.Diagnostics
 open System
 
@@ -12,7 +13,8 @@ type internal Context = {
    InputFunction : unit -> string
    OutputFunction : string -> unit
    ActiveProcesses : FProcess list
-   Processes :  StartInfo list
+   Processes : StartInfo list
+   ProcessFactory : ProcessTask -> FProcess
    ExitResolver : ExitResolver option
  }
 
@@ -43,7 +45,14 @@ let rec internal start (context : Context) =
             context |> start
         else
             context.ActiveProcesses |> stopProcesses
-            { InputFunction = context.InputFunction; OutputFunction = context.OutputFunction; ActiveProcesses = []; Processes = context.Processes; ExitResolver = exitResolver } |> start
+            {
+                InputFunction = context.InputFunction
+                OutputFunction = context.OutputFunction
+                ActiveProcesses = []
+                Processes = context.Processes
+                ExitResolver = exitResolver
+                ProcessFactory = context.ProcessFactory
+            } |> start
 
     let startSession() =
         context.OutputFunction "Input your alias."
@@ -73,6 +82,7 @@ let rec internal start (context : Context) =
           ActiveProcesses = processes
           Processes = context.Processes
           ExitResolver = exitResolver
+          ProcessFactory = context.ProcessFactory
         } |> start
 
 
@@ -85,31 +95,29 @@ let rec internal start (context : Context) =
             let input = context.InputFunction()
 
             let searchResult = context.ActiveProcesses
-                                       |> List.filter (fun x -> x.Alias = input)
-                                       |> Option.Some
-                                       |> Option.filter (fun x -> not x.IsEmpty)
+                             |> Result.Ok
+                             |> Result.map (List.filter (fun x -> x.Alias = input))
+                             |> Result.bind (fun x -> if x.IsEmpty then Result.Error(sprintf "Could not find a process with the input '%s'." input) else Result.Ok x)
+                             |> Result.bind (fun x -> if x.Length > 1 then Result.Error(sprintf "More than one process was matched with the input '%s'." input) else Result.Ok x)
+                             |> Result.map (fun x -> x.[0])
 
             let processes = match searchResult with
-                            | Some x ->
-                                x |> List.iter (fun x ->
-                                    // If the argumets supplied for creating the process is exposed
-                                    // I do not need to spawn process objects.
-                                    stopProcess x
-                                )
-                                let newProcesses = context.Processes
-                                                 |> List.collect (fun x -> x.Processes)
-                                                 |> List.filter (fun x -> x.Alias = input)
+                            | Ok x ->
+                                stopProcess x
+                                x.Arguments |> context.ProcessFactory |> startProcess
+                                context.ActiveProcesses |> List.append [ x ]
+                            | Result.Error x ->
+                                sprintf "ERROR: %s." x |> context.OutputFunction
+                                context.ActiveProcesses
 
-                                let res = (context.ActiveProcesses |> List.filter (fun x -> x.Alias <> input))
-                                newProcesses |> List.iter startProcess
-                                res |> List.append newProcesses
-                            | _ -> context.ActiveProcesses
+
             {
               InputFunction = context.InputFunction
               OutputFunction = context.OutputFunction
               ActiveProcesses = processes
               Processes = context.Processes
               ExitResolver = exitResolver
+              ProcessFactory = context.ProcessFactory
             } |> start
 
     match context.InputFunction() with

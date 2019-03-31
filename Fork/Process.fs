@@ -8,8 +8,8 @@ type public ProcessResult = { ExitCode : int; Output : string }
 type public ProcessExit = { Code : int; Time : DateTime }
 type public Stdout = | Error | Output
 type public OutputType = { Data : string; Type : Stdout }
-type public FProcess = { Process : Process; Alias : string; IsUsingSeperateWindow : bool }
-type public ProcessTask = { WorkingDirectory : string; FileName : string; Arguments : string; Alias : string; UseSeperateWindow : bool }
+type public ProcessTask = { WorkingDirectory : string; FileName : string; Arguments : string; Alias : string; UseSeperateWindow : bool; }
+type public FProcess = { Process : Process; Alias : string; Arguments : ProcessTask }
 type public Task = { Tasks : ProcessTask list; Alias : string }
 type public StartInfo = { Processes : FProcess list; Alias : String }
 
@@ -97,13 +97,13 @@ let public Create task processOutput output =
            )
         |> Event.filter (fun x -> not (x.Data |> String.IsNullOrWhiteSpace))
         |> Event.add (processOutput)
-    { Process = proc; Alias = task.Alias; IsUsingSeperateWindow = task.UseSeperateWindow }
+    { Process = proc; Alias = task.Alias; Arguments = task }
 
 let public Run p output = async {
     return using p.Process (fun proc ->
         proc.Start() |> ignore
         sprintf "Starting process %s with id %i" proc.ProcessName proc.Id |> output
-        if p.IsUsingSeperateWindow = false then
+        if p.Arguments.UseSeperateWindow = false then
             proc.BeginErrorReadLine >> proc.BeginOutputReadLine |> (fun x -> x();)
         proc.WaitForExit()
     )
