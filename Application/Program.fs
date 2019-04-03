@@ -57,7 +57,7 @@ let main argv =
                   |> List.collect (fun x -> x.Processes)
                   |> List.map (fun x -> x.Alias)
                   |> List.append (processes |> List.map (fun x -> x.Alias))
-    let inputAnalyzer x = InputAnalyzer.ParseCommand x aliases [ "start"; "stop"; "restart" ]
+    let inputAnalyzer x = InputAnalyzer.ParseCommand x aliases
     {
         InputFunction = Console.ReadLine >> (fun x -> inputAnalyzer x |> printfn "%A"; x)
         OutputFunction = Console.WriteLine
