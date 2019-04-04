@@ -1,23 +1,23 @@
 module Fork.InputAnalyzer
+open System
 open FParsec
-open Microsoft.FSharp.Reflection
 
-type public CommandUnion = | List | Exit
-type public AliasCommandUnion = | Restart | Stop | Start
-type public AliasCommand = { Command : AliasCommandUnion; Alias : string }
+type public AliasCommandEnum = | Restart = 0 | Stop = 1 | Start = 3
+type public AliasCommand = { Command : AliasCommandEnum; Alias : string }
+type public CommandEnum = | List = 0 | Exit = 1
 type public Command =
     | AliasCommand of AliasCommand
-    | CommandUnion of CommandUnion
-    
+    | CommandEnum of CommandEnum
+
 let aliasCommands = [ "restart"; "stop"; "start" ]
 let commands = [ "exit"; "list" ]
+let (|InvariantEqual|_|) (str : string) arg =
+  if String.Compare(str, arg, StringComparison.OrdinalIgnoreCase) = 0
+    then Some() else None
 
-// BUG this is case sensitive
 let fromString<'a> (s : string) =
-    match FSharpType.GetUnionCases typeof<'a> |> Array.filter (fun case -> case.Name = s) with
-    | [| case |] -> Some(FSharpValue.MakeUnion(case, [||]) :?> 'a)
-    | _ -> None
-    
+    Enum.Parse(typeof<'a>, s, true) :?> 'a
+
 let public ParseCommand input aliases =
 
     let aliases = aliases
@@ -29,16 +29,19 @@ let public ParseCommand input aliases =
                            |> List.reduce (<|>)
                            .>> spaces
                            .>>.? aliases
-                           |>> (fun (x, y) -> (fromString<AliasCommandUnion> x, y))
-                           |>> (fun (x, y) -> { Command = x.Value; Alias = y })
+                           .>> spaces
+                           .>> notFollowedBy anyChar
+                           |>> (fun (x, y) -> (fromString<AliasCommandEnum> x, y))
+                           |>> (fun (x, y) -> { Command = x; Alias = y })
                            |>> Command.AliasCommand
 
     let parserWithoutArgument = commands
                                 |> List.map pstringCI
                                 |> List.reduce (<|>)
-                                |>> (fun x -> fromString<CommandUnion> x)
-                                |>> Option.map (Command.CommandUnion)
-                                |>> (fun x -> x.Value)
+                                .>> spaces
+                                .>> notFollowedBy anyChar
+                                |>> (fun x -> fromString<CommandEnum> x)
+                                |>> (Command.CommandEnum)
 
     match run (parserWithArgument <|> parserWithoutArgument) input with
     | Success(x, y, z) -> Result.Ok x
