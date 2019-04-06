@@ -1,5 +1,4 @@
 module Fork.Session
-open FParsec
 open Fork
 open Fork.InputAnalyzer
 open Fork.Process
@@ -85,7 +84,6 @@ let rec internal start (context : Context) =
                             x |> sprintf "ERROR: %s" |> context.OutputFunction
                             context.ActiveProcesses
         {
-
           InputFunction = context.InputFunction
           OutputFunction = context.OutputFunction
           ActiveProcesses = processes
