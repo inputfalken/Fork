@@ -1,4 +1,6 @@
 module Fork.Session
+open Fork
+open Fork.InputAnalyzer
 open Fork.Process
 open System.Diagnostics
 open System
@@ -9,7 +11,7 @@ type internal ExitResolver = {
  }
 
 type internal Context = {
-   InputFunction : unit -> string
+   InputFunction : unit -> Result<InputAnalyzer.Command, string>
    OutputFunction : string -> unit
    ActiveProcesses : FProcess list
    Processes : StartInfo list
@@ -38,41 +40,50 @@ let rec internal start (context : Context) =
                                          |> Event.merge (Console.CancelKeyPress |> Event.map (fun x -> Choice2Of2 x))
                                  Handler = Handler<Choice<EventArgs, ConsoleCancelEventArgs>>(fun _ arg -> sprintf "%A" arg |> context.OutputFunction; context.ActiveProcesses |> stopProcesses)
                               } |> (fun x -> x.Event.AddHandler x.Handler; Some x)
-    let stopSession() =
+    let stopSession (input : string) =
         if context.ActiveProcesses.IsEmpty then
             context.OutputFunction "There's no active procceses."
             context |> start
         else
+            let searchResult = Result.Ok context.ActiveProcesses
+                             |> Result.map (List.filter (fun x -> x.Alias = input))
+                             |> Result.bind (fun x -> if x.IsEmpty then Result.Error(sprintf "The alias '%s' is not running." input) else Result.Ok x)
+                             |> Result.map (fun x -> x.[0])
+            let processes = match searchResult with
+                            | Result.Ok x ->
+                                stopProcess x
+                                context.ActiveProcesses |> List.filter (fun x -> x.Alias <> input)
+                            | Result.Error x ->
+                                context.OutputFunction x
+                                context.ActiveProcesses
+            
             context.ActiveProcesses |> stopProcesses
             {
                 InputFunction = context.InputFunction
                 OutputFunction = context.OutputFunction
-                ActiveProcesses = []
+                ActiveProcesses = processes
                 Processes = context.Processes
                 ExitResolver = exitResolver
                 ProcessFactory = context.ProcessFactory
             } |> start
 
-    let startSession() =
-        context.OutputFunction "Input your alias."
-        let input = context.InputFunction()
+    let startSession input =
         let searchResult = Result.Ok context.ActiveProcesses
                          |> Result.map (List.filter (fun x -> x.Alias = input))
                          |> Result.bind (fun x -> if x.IsEmpty then Result.Ok context.Processes else Result.Error(sprintf "There's already an process running under the alias '%s'." input))
-                         |> Result.bind (fun x -> if x |> Seq.exists ( fun x -> x.Alias = input) then Result.Error "Group aliases are currently not supported." else Result.Ok x)
+                         |> Result.bind (fun x -> if x |> Seq.exists (fun x -> x.Alias = input) then Result.Error "Group aliases are currently not supported." else Result.Ok x)
                          |> Result.map (List.collect (fun x -> x.Processes))
                          |> Result.map (List.filter (fun x -> x.Alias = input))
                          |> Result.bind (fun x -> if x.IsEmpty then Result.Error(sprintf "Could not find a process with the input '%s'." input) else Result.Ok x.[0])
 
         let processes = match searchResult with
-                        | Ok x ->
+                        | Result.Ok x ->
                             x |> startProcess
                             context.ActiveProcesses |> List.append [ x ]
                         | Result.Error x ->
                             x |> sprintf "ERROR: %s" |> context.OutputFunction
                             context.ActiveProcesses
         {
-
           InputFunction = context.InputFunction
           OutputFunction = context.OutputFunction
           ActiveProcesses = processes
@@ -82,13 +93,11 @@ let rec internal start (context : Context) =
         } |> start
 
 
-    let restartSession() =
+    let restartSession input =
         if context.ActiveProcesses.IsEmpty then
             context.OutputFunction "There's no active procceses."
             context |> start
         else
-            context.OutputFunction "Input your alias."
-            let input = context.InputFunction()
 
             let searchResult = context.ActiveProcesses
                              |> Result.Ok
@@ -98,7 +107,7 @@ let rec internal start (context : Context) =
                              |> Result.map (fun x -> x.[0])
 
             let processes = match searchResult with
-                            | Ok x ->
+                            | Result.Ok x ->
                                 stopProcess x
                                 x.Arguments |> context.ProcessFactory |> startProcess
                                 context.ActiveProcesses
@@ -118,13 +127,27 @@ let rec internal start (context : Context) =
             } |> start
 
     match context.InputFunction() with
-    | "restart" -> restartSession()
-    | "start" -> startSession()
-    | "stop" -> stopSession()
-    | "list" -> if context.ActiveProcesses.IsEmpty then context.OutputFunction "There's no active processes."; context |> start
+    | Result.Ok command ->
+        match command with
+        | InputAnalyzer.Command.CommandEnum x ->
+            match x with
+            | CommandEnum.Exit -> context.ActiveProcesses
+            | CommandEnum.List ->
+                if
+                    context.ActiveProcesses.IsEmpty then context.OutputFunction "There's no active processes."; context |> start
                 else
                     context.ActiveProcesses |> List.map (fun x -> sprintf "%s (%s) = %s %s %s" x.Alias (isAlive x.Process) x.Process.StartInfo.FileName x.Process.StartInfo.Arguments x.Process.StartInfo.WorkingDirectory)
                     |> List.iter context.OutputFunction
                     context |> start
-    | "exit" -> context.ActiveProcesses
-    | _ -> context |> start
+            | _ -> raise (NotImplementedException())
+        | InputAnalyzer.AliasCommand x ->
+            match x.Command with
+            | AliasCommandEnum.Stop ->
+                stopSession x.Alias
+            | AliasCommandEnum.Start ->
+                startSession x.Alias
+            | AliasCommandEnum.Restart ->
+                restartSession x.Alias
+            | _ -> raise (NotImplementedException())
+    | Result.Error x ->
+        context.OutputFunction x; context |> start

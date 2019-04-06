@@ -18,6 +18,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Fork\Fork.fsproj" />
+      <ProjectReference Include="..\Parser\Parser.fsproj" />
     </ItemGroup>
 
 </Project>
