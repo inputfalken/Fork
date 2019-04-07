@@ -1,9 +1,11 @@
 module Fork.Session
+open FSharp.Data.Runtime.StructuralInference
 open Fork
 open Fork.InputAnalyzer
 open Fork.Process
 open System.Diagnostics
 open System
+open System.Collections.Generic
 
 type internal ExitResolver = {
    Handler : Handler<Choice<EventArgs, ConsoleCancelEventArgs>>
@@ -56,7 +58,7 @@ let rec internal start (context : Context) =
                             | Result.Error x ->
                                 context.OutputFunction x
                                 context.ActiveProcesses
-           
+
             {
                 InputFunction = context.InputFunction
                 OutputFunction = context.OutputFunction
@@ -67,21 +69,22 @@ let rec internal start (context : Context) =
             } |> start
 
     let startSession input =
-        let searchResult = Result.Ok context.ActiveProcesses
-                         |> Result.map (List.filter (fun x -> x.Alias = input))
-                         |> Result.bind (fun x -> if x.IsEmpty then Result.Ok context.Processes else Result.Error(sprintf "There's already an process running under the alias '%s'." input))
-                         |> Result.bind (fun x -> if x |> Seq.exists (fun x -> x.Alias = input) then Result.Error "Group aliases are currently not supported." else Result.Ok x)
-                         |> Result.map (List.collect (fun x -> x.Processes))
-                         |> Result.map (List.filter (fun x -> x.Alias = input))
-                         |> Result.bind (fun x -> if x.IsEmpty then Result.Error(sprintf "Could not find a process with the input '%s'." input) else Result.Ok x.[0])
+        // TODO: create proper union type
+        let search = Result.Ok context.Processes
+                             |> Result.map (List.filter (fun x -> x.Alias = input))
+                             |> Result.bind (fun x -> if x.IsEmpty then Result.Error context.Processes else Result.Ok x)
+                             |> Result.map (List.collect (fun x -> x.Processes))
+                             |> Result.mapError (List.collect (fun x -> x.Processes))
+                             |> Result.mapError (List.filter (fun x -> x.Alias = input))
 
-        let processes = match searchResult with
-                        | Result.Ok x ->
-                            x.Arguments |> context.ProcessFactory |> startProcess
-                            context.ActiveProcesses |> List.append [ x ]
-                        | Result.Error x ->
-                            x |> sprintf "ERROR: %s" |> context.OutputFunction
-                            context.ActiveProcesses
+        let processes = match search with
+                        | Result.Ok x -> x
+                        | Result.Error x -> x
+                        |> List.map (fun x -> x.Arguments)
+                        |> List.map context.ProcessFactory
+                        |> List.append context.ActiveProcesses
+
+        processes |> List.iter startProcess
         {
           InputFunction = context.InputFunction
           OutputFunction = context.OutputFunction
