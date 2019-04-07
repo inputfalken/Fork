@@ -9,7 +9,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="FParsec" Version="1.0.3" />
+        <PackageReference PrivateAssets="Compile" Include="FParsec" Version="1.0.3" />
     </ItemGroup>
 
 </Project>

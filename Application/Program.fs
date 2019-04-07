@@ -4,6 +4,7 @@ open System
 open Session
 open Fork.Process
 open BlackFox.ColoredPrintf
+open FSharp.Data
 open System.IO
 
 type ProcessStartInfoProvider = FSharp.Data.JsonProvider<"""
@@ -49,7 +50,6 @@ let main argv =
                       }) |> Array.toList
                   })
                   |> Seq.toList
-
     let processWithStdout x = Fork.Process.Create x (fun y -> ColoredPrintf.colorprintfn "%s $yellow[->] %s" x.Alias y.Data) Console.WriteLine
     let processes = arguments |> List.map (fun x -> { Processes = x.Tasks |> List.map processWithStdout; Alias = x.Alias })
 
