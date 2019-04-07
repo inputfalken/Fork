@@ -56,8 +56,7 @@ let rec internal start (context : Context) =
                             | Result.Error x ->
                                 context.OutputFunction x
                                 context.ActiveProcesses
-            
-            context.ActiveProcesses |> stopProcesses
+           
             {
                 InputFunction = context.InputFunction
                 OutputFunction = context.OutputFunction
@@ -78,7 +77,7 @@ let rec internal start (context : Context) =
 
         let processes = match searchResult with
                         | Result.Ok x ->
-                            x |> startProcess
+                            x.Arguments |> context.ProcessFactory |> startProcess
                             context.ActiveProcesses |> List.append [ x ]
                         | Result.Error x ->
                             x |> sprintf "ERROR: %s" |> context.OutputFunction
