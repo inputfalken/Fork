@@ -2,8 +2,11 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>netcoreapp2.2</TargetFramework>
+        <PackageOutputPath>./nupkg</PackageOutputPath>
+        <PackAsTool>True</PackAsTool>
         <RootNamespace>Fork</RootNamespace>
+        <TargetFramework>netcoreapp2.2</TargetFramework>
+        <ToolCommandName>fork</ToolCommandName>
     </PropertyGroup>
 
     <ItemGroup>
