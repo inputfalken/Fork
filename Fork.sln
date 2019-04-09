@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 #
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Application", "Application\Application.fsproj", "{CC248C43-4D35-4385-AD9D-368F1B965832}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fork", "Fork\Fork.fsproj", "{CC248C43-4D35-4385-AD9D-368F1B965832}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fork", "Fork\Fork.fsproj", "{AE5EC0DE-D763-47B0-9985-2E1659EE38FB}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "ProcessHandler", "ProcessHandler\ProcessHandler.fsproj", "{AE5EC0DE-D763-47B0-9985-2E1659EE38FB}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Parser", "Parser\Parser.fsproj", "{AAD60249-A895-4E7F-B995-74CCDDCE0668}"
 EndProject

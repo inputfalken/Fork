@@ -1,11 +1,27 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>netstandard2.0</TargetFramework>
+        <OutputType>Exe</OutputType>
+        <PackageOutputPath>./nupkg</PackageOutputPath>
+        <PackAsTool>True</PackAsTool>
+        <RootNamespace>Fork</RootNamespace>
+        <TargetFramework>netcoreapp2.2</TargetFramework>
+        <ToolCommandName>fork</ToolCommandName>
     </PropertyGroup>
 
     <ItemGroup>
-      <Compile Include="Process.fs" />
+        <Compile Include="Session.fs"/>
+        <Compile Include="Program.fs"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="BlackFox.ColoredPrintf" Version="1.0.3"/>
+        <PackageReference Include="FSharp.Data" Version="3.0.0"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\ProcessHandler\ProcessHandler.fsproj"/>
+        <ProjectReference Include="..\Parser\Parser.fsproj"/>
     </ItemGroup>
 
 </Project>
