@@ -1,31 +1,18 @@
 module Fork.Session
 open FSharp.Data.Runtime.StructuralInference
-open FSharp.Data.Runtime.StructuralInference
+open Fork
 open Fork
 open Fork.InputAnalyzer
-open Fork.Process
+open ProcessHandler
+open State
 open System.Diagnostics
 open System
 
-type internal ExitResolver = {
-   Handler : Handler<Choice<EventArgs, ConsoleCancelEventArgs>>
-   Event : IEvent<Choice<EventArgs, ConsoleCancelEventArgs>>
- }
-
-type internal Context = {
-   InputFunction : unit -> Result<InputAnalyzer.Command, string>
-   OutputFunction : string -> unit
-   ActiveProcesses : FProcess list
-   Processes : StartInfo list
-   ProcessFactory : ProcessTask -> FProcess
-   ExitResolver : ExitResolver option
- }
-
 let rec internal start (context : Context) =
     let isAlive (p : Process) = try p.Responding |> ignore; "running" with :? System.InvalidOperationException as x -> "stopped"
-    let startProcess p = p |> (fun x -> Fork.Process.Run x context.OutputFunction) |> Async.Start
+    let startProcess p = p |> (fun x -> ProcessHandler.Run x context.OutputFunction) |> Async.Start
     let stopProcess (p : FProcess) = try (p.Process, TimeSpan.FromSeconds 30.)
-                                         ||> Fork.Process.RecursiveKill
+                                         ||> ProcessHandler.RecursiveKill
                                          |> List.filter (fun x -> x.ExitCode <> 0)
                                          |> List.map (fun x -> sprintf "Warning '%s' did not exit properly '%s' (%i)" p.Alias x.Output x.ExitCode)
                                          |> List.iter context.OutputFunction
@@ -42,51 +29,6 @@ let rec internal start (context : Context) =
                                          |> Event.merge (Console.CancelKeyPress |> Event.map (fun x -> Choice2Of2 x))
                                  Handler = Handler<Choice<EventArgs, ConsoleCancelEventArgs>>(fun _ arg -> sprintf "%A" arg |> context.OutputFunction; context.ActiveProcesses |> stopProcesses)
                               } |> (fun x -> x.Event.AddHandler x.Handler; Some x)
-    let stopSession (input : string) =
-        if context.ActiveProcesses.IsEmpty then
-            context.OutputFunction "There's no active procceses."
-            context |> start
-        else
-            let aliasGroup = Option.Some context.Processes
-                           |> Option.map (List.filter (fun x -> x.Alias = input))
-                           |> Option.filter (fun x -> not x.IsEmpty)
-                           |> Option.map (List.collect (fun x -> x.Processes))
-
-            if aliasGroup.IsSome then
-                let aliasGroupProcesses = aliasGroup.Value
-                aliasGroupProcesses |> List.iter stopProcess
-
-                {
-                  InputFunction = context.InputFunction
-                  OutputFunction = context.OutputFunction
-                  ActiveProcesses = context.ActiveProcesses |> List.filter (fun x -> not (aliasGroupProcesses |> List.map (fun x -> x.Alias) |> List.contains x.Alias))
-                  Processes = context.Processes
-                  ExitResolver = exitResolver
-                  ProcessFactory = context.ProcessFactory
-                }
-            else
-                let searchResult = Result.Ok context.ActiveProcesses
-                                 |> Result.map (List.filter (fun x -> x.Alias = input))
-                                 |> Result.bind (fun x -> if x.IsEmpty then Result.Error(sprintf "The alias '%s' is not running." input) else Result.Ok x)
-                                 |> Result.map (fun x -> x.[0])
-
-                let processes = match searchResult with
-                                | Result.Ok x ->
-                                    stopProcess x
-                                    context.ActiveProcesses |> List.filter (fun x -> x.Alias <> input)
-                                | Result.Error x ->
-                                    context.OutputFunction x
-                                    context.ActiveProcesses
-
-                {
-                    InputFunction = context.InputFunction
-                    OutputFunction = context.OutputFunction
-                    ActiveProcesses = processes
-                    Processes = context.Processes
-                    ExitResolver = exitResolver
-                    ProcessFactory = context.ProcessFactory
-                }
-            |> start
 
     let startSession input =
         // TODO: create proper union type
@@ -185,7 +127,7 @@ let rec internal start (context : Context) =
         | InputAnalyzer.AliasCommand x ->
             match x.Command with
             | AliasCommandEnum.Stop ->
-                stopSession x.Alias
+                 Stop.Session x.Alias context exitResolver stopProcess |> start
             | AliasCommandEnum.Start ->
                 startSession x.Alias
             | AliasCommandEnum.Restart ->
