@@ -6,10 +6,6 @@ open Fork.InputAnalyzer
 open Fork.Process
 open System.Diagnostics
 open System
-open System.Collections.Generic
-open System.Collections.Generic
-open System.Collections.Generic
-open System.Collections.Generic
 
 type internal ExitResolver = {
    Handler : Handler<Choice<EventArgs, ConsoleCancelEventArgs>>
