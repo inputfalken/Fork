@@ -63,8 +63,8 @@ let rec internal start (context : Context) =
                   Processes = context.Processes
                   ExitResolver = exitResolver
                   ProcessFactory = context.ProcessFactory
-                } |> start
-             else
+                }
+            else
                 let searchResult = Result.Ok context.ActiveProcesses
                                  |> Result.map (List.filter (fun x -> x.Alias = input))
                                  |> Result.bind (fun x -> if x.IsEmpty then Result.Error(sprintf "The alias '%s' is not running." input) else Result.Ok x)
@@ -85,7 +85,8 @@ let rec internal start (context : Context) =
                     Processes = context.Processes
                     ExitResolver = exitResolver
                     ProcessFactory = context.ProcessFactory
-                } |> start
+                }
+            |> start
 
     let startSession input =
         // TODO: create proper union type
