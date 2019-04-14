@@ -1,8 +1,8 @@
-module internal Stop
+module internal Command.Stop
 
 open State
 
-let internal Session (input : string) (context : Context) exitResolver stopProcess =
+let internal Exec input context exitResolver stopProcess =
     if context.ActiveProcesses.IsEmpty then
         context.OutputFunction "There's no active procceses."
         context

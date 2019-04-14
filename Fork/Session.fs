@@ -30,86 +30,6 @@ let rec internal start (context : Context) =
                                  Handler = Handler<Choice<EventArgs, ConsoleCancelEventArgs>>(fun _ arg -> sprintf "%A" arg |> context.OutputFunction; context.ActiveProcesses |> stopProcesses)
                               } |> (fun x -> x.Event.AddHandler x.Handler; Some x)
 
-    let startSession input =
-        // TODO: create proper union type
-        let search = Result.Ok context.Processes
-                             |> Result.map (List.filter (fun x -> x.Alias = input))
-                             |> Result.bind (fun x -> if x.IsEmpty then Result.Error context.Processes else Result.Ok x)
-                             |> Result.map (List.collect (fun x -> x.Processes))
-                             |> Result.mapError (List.collect (fun x -> x.Processes))
-                             |> Result.mapError (List.filter (fun x -> x.Alias = input))
-
-        let processes = match search with
-                        | Result.Ok x -> x
-                        | Result.Error x -> x
-                        |> List.map (fun x -> x.Arguments)
-                        |> List.map context.ProcessFactory
-                        |> List.append context.ActiveProcesses
-
-        processes |> List.iter startProcess
-        {
-          InputFunction = context.InputFunction
-          OutputFunction = context.OutputFunction
-          ActiveProcesses = processes
-          Processes = context.Processes
-          ExitResolver = exitResolver
-          ProcessFactory = context.ProcessFactory
-        } |> start
-
-    let restartSession input =
-        if context.ActiveProcesses.IsEmpty then
-            context.OutputFunction "There's no active procceses."
-            context |> start
-        else
-            let aliasGroup = Option.Some context.Processes
-                           |> Option.map (List.filter (fun x -> x.Alias = input))
-                           |> Option.filter (fun x -> not x.IsEmpty)
-                           |> Option.map (List.collect (fun x -> x.Processes))
-
-            if aliasGroup.IsSome then
-                let aliasGroupProcesses = aliasGroup.Value
-                aliasGroupProcesses |> List.iter stopProcess
-                aliasGroupProcesses
-                |> List.map (fun x -> x.Arguments)
-                |> List.map context.ProcessFactory
-                |> List.iter startProcess
-
-                {
-                  InputFunction = context.InputFunction
-                  OutputFunction = context.OutputFunction
-                  ActiveProcesses = context.ActiveProcesses |> List.filter (fun x -> aliasGroupProcesses |> List.map (fun x -> x.Alias) |> List.contains x.Alias)
-                  Processes = context.Processes
-                  ExitResolver = exitResolver
-                  ProcessFactory = context.ProcessFactory
-                } |> start
-             else
-                let searchResult = context.ActiveProcesses
-                                 |> Result.Ok
-                                 |> Result.map (List.filter (fun x -> x.Alias = input))
-                                 |> Result.bind (fun x -> if x.IsEmpty then Result.Error(sprintf "Could not find a process with the input '%s'." input) else Result.Ok x)
-                                 |> Result.bind (fun x -> if x.Length > 1 then Result.Error(sprintf "More than one process was matched with the input '%s'." input) else Result.Ok x)
-                                 |> Result.map (fun x -> x.[0])
-
-                let processes = match searchResult with
-                                | Result.Ok x ->
-                                    stopProcess x
-                                    x.Arguments |> context.ProcessFactory |> startProcess
-                                    context.ActiveProcesses
-                                    |> List.filter (fun x -> x.Alias <> input)
-                                    |> List.append [ x ]
-                                | Result.Error x ->
-                                    sprintf "ERROR: %s." x |> context.OutputFunction
-                                    context.ActiveProcesses
-
-                {
-                  InputFunction = context.InputFunction
-                  OutputFunction = context.OutputFunction
-                  ActiveProcesses = processes
-                  Processes = context.Processes
-                  ExitResolver = exitResolver
-                  ProcessFactory = context.ProcessFactory
-                } |> start
-
     match context.InputFunction() with
     | Result.Ok command ->
         match command with
@@ -127,11 +47,11 @@ let rec internal start (context : Context) =
         | InputAnalyzer.AliasCommand x ->
             match x.Command with
             | AliasCommandEnum.Stop ->
-                 Stop.Session x.Alias context exitResolver stopProcess |> start
+                 Command.Stop.Exec x.Alias context exitResolver stopProcess |> start
             | AliasCommandEnum.Start ->
-                startSession x.Alias
+                Command.Start.Exec x.Alias context exitResolver startProcess |> start
             | AliasCommandEnum.Restart ->
-                restartSession x.Alias
+                Command.Restart.Exec x.Alias context exitResolver startProcess stopProcess |> start
             | _ -> raise (NotImplementedException())
     | Result.Error x ->
         context.OutputFunction x; context |> start

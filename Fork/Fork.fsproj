@@ -10,10 +10,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="Context.fs" />
-        <Compile Include="Stop.fs" />
-        <Compile Include="Session.fs" />
-        <Compile Include="Program.fs" />
+      <Compile Include="Context.fs" />
+      <Compile Include="Restart.fs" />
+      <Compile Include="Start.fs" />
+      <Compile Include="Stop.fs" />
+      <Compile Include="Session.fs" />
+      <Compile Include="Program.fs" />
     </ItemGroup>
 
     <ItemGroup>
@@ -25,5 +27,4 @@
         <ProjectReference Include="..\ProcessHandler\ProcessHandler.fsproj" />
         <ProjectReference Include="..\Parser\Parser.fsproj" />
     </ItemGroup>
-
 </Project>
