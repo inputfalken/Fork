@@ -15,6 +15,7 @@
       <Compile Include="Start.fs" />
       <Compile Include="Stop.fs" />
       <Compile Include="Session.fs" />
+      <Compile Include="ExposeInternals.fs" />
       <Compile Include="Program.fs" />
     </ItemGroup>
 
