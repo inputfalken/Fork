@@ -2,21 +2,25 @@ module internal Command.Start
 open ProcessHandler
 open State
 
-// TODO: create proper union type
-let internal search (processes : StartInfo list) (input : string) = Result.Ok processes
-                                                                  |> Result.map (List.filter (fun x -> x.Alias = input))
-                                                                  |> Result.bind (fun x -> if x.IsEmpty then Result.Error processes else Result.Ok x)
-                                                                  |> Result.map (List.collect (fun x -> x.Processes))
-                                                                  |> Result.mapError (List.collect (fun x -> x.Processes))
-                                                                  |> Result.mapError (List.filter (fun x -> x.Alias = input))
-let internal Exec input context exitResolver startProcess =
+let internal search (processes : StartInfo list) (input : string) =
+    let noAliasGroupSearch =
+        processes
+        |> List.collect (fun x -> x.Processes)
+        |> List.filter (fun x -> x.Alias = input)
+        |> (fun x -> if x.IsEmpty then Option.None else Option.Some x.[0])
 
-    let processes = match (search context.Processes input) with
-                    | Result.Ok x -> x
-                    | Result.Error x -> x
-                    |> List.map (fun x -> x.Arguments)
-                    |> List.map context.ProcessFactory
-                    |> List.append context.ActiveProcesses
+    let search = processes |> List.filter (fun x -> x.Alias = input)
+
+    if search.IsEmpty
+        then (noAliasGroupSearch, input) |> SearchResult.Alias
+        else (search |> List.collect (fun x -> x.Processes), input) |> SearchResult.AliasGroup
+
+let internal Exec input context exitResolver startProcess =
+    let processes = match search context.Processes input with
+                    | Alias(x, y) -> match x with
+                                     | Some x -> [ x ]
+                                     | None -> []
+                    | AliasGroup(x, y) -> x
 
     processes |> List.iter startProcess
 

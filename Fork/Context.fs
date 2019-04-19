@@ -16,3 +16,8 @@ type internal Context = {
    ProcessFactory : ProcessTask -> FProcess
    ExitResolver : ExitResolver option
  }
+
+type SearchResult = | Alias of FProcess Option * string
+                    | AliasGroup of FProcess List * string
+
+
