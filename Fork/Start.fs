@@ -3,7 +3,7 @@ open ProcessHandler
 open State
 
 let internal search (processes : StartInfo list) (input : string) =
-    let noAliasGroupSearch =
+    let noAliasGroupSearch() =
         processes
         |> List.collect (fun x -> x.Processes)
         |> List.filter (fun x -> x.Alias = input)
@@ -12,7 +12,7 @@ let internal search (processes : StartInfo list) (input : string) =
     let search = processes |> List.filter (fun x -> x.Alias = input)
 
     if search.IsEmpty
-        then (noAliasGroupSearch, input) |> SearchResult.Alias
+        then (noAliasGroupSearch(), input) |> SearchResult.Alias
         else (search |> List.collect (fun x -> x.Processes), input) |> SearchResult.AliasGroup
 
 let internal Exec input context exitResolver startProcess =
@@ -22,12 +22,12 @@ let internal Exec input context exitResolver startProcess =
                                      | None -> []
                     | AliasGroup(x, y) -> x
 
-    processes |> List.iter startProcess
+    processes |> List.iter startProcess 
 
     {
       InputFunction = context.InputFunction
       OutputFunction = context.OutputFunction
-      ActiveProcesses = processes
+      ActiveProcesses = context.ActiveProcesses @ processes 
       Processes = context.Processes
       ExitResolver = exitResolver
       ProcessFactory = context.ProcessFactory
