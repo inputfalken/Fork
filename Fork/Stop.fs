@@ -1,49 +1,46 @@
 module internal Command.Stop
-
 open State
+open ProcessHandler
+
+let internal search (processes : StartInfo list) (activeProcesses : FProcess list) (input : string) =
+    let aliasGroupSearch = processes |> List.filter (fun x -> x.Alias = input)
+    if aliasGroupSearch.IsEmpty
+        then
+            activeProcesses
+            |> List.filter (fun x -> x.Alias = input)
+            |> (fun x -> if x.IsEmpty then Option.None else Option.Some x.[0])
+            |> (fun x -> (x, input) |> SearchResult.Alias)
+        else
+            activeProcesses
+            |> List.filter (fun x -> (aliasGroupSearch
+                                          |> List.collect (fun x -> x.Processes)
+                                          |> List.map (fun x -> x.Alias)
+                                          |> List.contains x.Alias
+                                          )
+            )
+            |> (fun x -> (x, input)) |> SearchResult.AliasGroup
 
 let internal Exec input context exitResolver stopProcess =
     if context.ActiveProcesses.IsEmpty then
         context.OutputFunction "There's no active procceses."
         context
     else
-        let aliasGroup = Option.Some context.Processes
-                       |> Option.map (List.filter (fun x -> x.Alias = input))
-                       |> Option.filter (fun x -> not x.IsEmpty)
-                       |> Option.map (List.collect (fun x -> x.Processes))
+        let processes = match search context.Processes context.ActiveProcesses input with
+                        | Alias(x, y) -> match x with
+                                         | Some x ->
+                                             x |> stopProcess
+                                             [ x ]
+                                         | None -> context.ActiveProcesses
+                        | AliasGroup(x, y) ->
+                            x |> List.iter stopProcess
+                            x
+        {
 
-        if aliasGroup.IsSome then
-            let aliasGroupProcesses = aliasGroup.Value
-            aliasGroupProcesses |> List.iter stopProcess
-
-            {
-              InputFunction = context.InputFunction
-              OutputFunction = context.OutputFunction
-              ActiveProcesses = context.ActiveProcesses |> List.filter (fun x -> not (aliasGroupProcesses |> List.map (fun x -> x.Alias) |> List.contains x.Alias))
-              Processes = context.Processes
-              ExitResolver = exitResolver
-              ProcessFactory = context.ProcessFactory
-            }
-        else
-            let searchResult = Result.Ok context.ActiveProcesses
-                             |> Result.map (List.filter (fun x -> x.Alias = input))
-                             |> Result.bind (fun x -> if x.IsEmpty then Result.Error(sprintf "The alias '%s' is not running." input) else Result.Ok x)
-                             |> Result.map (fun x -> x.[0])
-
-            let processes = match searchResult with
-                            | Result.Ok x ->
-                                stopProcess x
-                                context.ActiveProcesses |> List.filter (fun x -> x.Alias <> input)
-                            | Result.Error x ->
-                                context.OutputFunction x
-                                context.ActiveProcesses
-
-            {
-                InputFunction = context.InputFunction
-                OutputFunction = context.OutputFunction
-                ActiveProcesses = processes
-                Processes = context.Processes
-                ExitResolver = exitResolver
-                ProcessFactory = context.ProcessFactory
-            }
+            InputFunction = context.InputFunction
+            OutputFunction = context.OutputFunction
+            ActiveProcesses = context.ActiveProcesses |> List.filter (fun x -> not (processes |> Seq.exists (fun y -> y.Alias = x.Alias)))
+            Processes = context.Processes
+            ExitResolver = exitResolver
+            ProcessFactory = context.ProcessFactory
+        }
 
