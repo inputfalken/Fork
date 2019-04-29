@@ -21,13 +21,13 @@ let internal Exec input context exitResolver startProcess =
                                      | Some x -> [ x ]
                                      | None -> []
                     | AliasGroup(x, y) -> x
-
-    processes |> List.iter startProcess 
+                    |> List.map (fun x -> x.Arguments |> context.ProcessFactory)
+                    |> List.map (fun x -> x |> startProcess; x)
 
     {
       InputFunction = context.InputFunction
       OutputFunction = context.OutputFunction
-      ActiveProcesses = context.ActiveProcesses @ processes 
+      ActiveProcesses = context.ActiveProcesses @ processes
       Processes = context.Processes
       ExitResolver = exitResolver
       ProcessFactory = context.ProcessFactory

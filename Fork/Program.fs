@@ -59,7 +59,7 @@ let main argv =
     let inputAnalyzer x = InputAnalyzer.ParseCommand x aliases
 
     {
-        InputFunction = Console.ReadLine >> inputAnalyzer
+        InputFunction = Console.ReadLine >> inputAnalyzer 
         OutputFunction = Console.WriteLine
         ActiveProcesses = []
         ProcessFactory = processWithStdout
