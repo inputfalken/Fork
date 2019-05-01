@@ -32,10 +32,12 @@ type ProcessStartInfoProvider = FSharp.Data.JsonProvider<"""
 
 [<EntryPoint>]
 let main argv =
-    let arguments = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".fork.json")
-                  |> File.ReadAllText
-                  |> ProcessStartInfoProvider.Parse
-                  |> Seq.map (fun x -> {
+    let parsedJson = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".fork.json")
+                  |> Result.Ok
+                  |> Result.bind (fun x -> if File.Exists x then Result.Ok x else Result.Error(sprintf "Could not find file '%s'." x))
+                  |> Result.map File.ReadAllText
+                  |> Result.map ProcessStartInfoProvider.Parse // This could throw, should be try catched in a Result.Bind
+                  |> Result.map (Seq.map (fun x -> {
                       Alias = x.Alias
                       Tasks = x.Tasks |> Array.map (fun x -> {
                           WorkingDirectory = x.WorkingDirectory
@@ -47,25 +49,33 @@ let main argv =
                                               | None -> false
 
                       }) |> Array.toList
-                  })
-                  |> Seq.toList
-    let processWithStdout x = ProcessHandler.Create x (fun y -> ColoredPrintf.colorprintfn "%s $yellow[->] %s" x.Alias y.Data) Console.WriteLine
-    let processes = arguments |> List.map (fun x -> { Processes = x.Tasks |> List.map processWithStdout; Alias = x.Alias })
+                  }))
+                  |> Result.map Seq.toList
 
-    let aliases = processes
-                  |> List.collect (fun x -> x.Processes)
-                  |> List.map (fun x -> x.Alias)
-                  |> List.append (processes |> List.map (fun x -> x.Alias))
-    let inputAnalyzer x = InputAnalyzer.ParseCommand x aliases
 
-    {
-        InputFunction = Console.ReadLine >> inputAnalyzer 
-        OutputFunction = Console.WriteLine
-        ActiveProcesses = []
-        ProcessFactory = processWithStdout
-        Processes = processes
-        ExitResolver = None
-    }
-    |> Session.start
-    |> ignore
-    0
+    match parsedJson with
+    | Ok tasks ->
+                    let processWithStdout x = ProcessHandler.Create x (fun y -> ColoredPrintf.colorprintfn "%s $yellow[->] %s" x.Alias y.Data) Console.WriteLine
+                    let processes = tasks |> List.map (fun x -> { Processes = x.Tasks |> List.map processWithStdout; Alias = x.Alias })
+                    
+                    let aliases = processes
+                                  |> List.collect (fun x -> x.Processes)
+                                  |> List.map (fun x -> x.Alias)
+                                  |> List.append (processes |> List.map (fun x -> x.Alias))
+                                  
+                    let inputAnalyzer x = InputAnalyzer.ParseCommand x aliases
+                    
+                    {
+                        InputFunction = Console.ReadLine >> inputAnalyzer
+                        OutputFunction = Console.WriteLine
+                        ActiveProcesses = []
+                        ProcessFactory = processWithStdout
+                        Processes = processes
+                        ExitResolver = None
+                    }
+                    |> Session.start
+                    |> ignore
+                    0
+    | Result.Error x ->
+       Console.WriteLine x
+       1
