@@ -18,7 +18,6 @@ let rec internal start (context : Context) =
                                          |> List.iter context.OutputFunction
                                      with :? System.InvalidOperationException as x -> ()
     context.ExitResolver |> Option.iter (fun x -> x.Event.RemoveHandler x.Handler)
-    let stopProcesses pList = (pList : FProcess list) |> List.iter (fun x -> sprintf "Stopping '%s'..." x.Alias |> context.OutputFunction; x |> stopProcess)
     // This can cause a stackoverflow exception if it runs for to long...
     let exitResolver = if context.ActiveProcesses.IsEmpty then
                             None
@@ -27,7 +26,7 @@ let rec internal start (context : Context) =
                                  Event = System.AppDomain.CurrentDomain.ProcessExit
                                          |> Event.map (fun x -> Choice1Of2 x)
                                          |> Event.merge (Console.CancelKeyPress |> Event.map (fun x -> Choice2Of2 x))
-                                 Handler = Handler<Choice<EventArgs, ConsoleCancelEventArgs>>(fun _ arg -> sprintf "%A" arg |> context.OutputFunction; context.ActiveProcesses |> stopProcesses)
+                                 Handler = Handler<Choice<EventArgs, ConsoleCancelEventArgs>>(fun _ arg -> sprintf "%A" arg |> context.OutputFunction; context.ActiveProcesses |> List.iter stopProcess)
                               } |> (fun x -> x.Event.AddHandler x.Handler; Some x)
 
     match context.InputFunction() with
