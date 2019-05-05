@@ -68,10 +68,10 @@ let public Create task processOutput output =
     task.WorkingDirectory
     |> Option.Some
     |> Option.filter (fun x -> not (Directory.Exists x))
-    |> Option.iter (fun x -> raise (ArgumentException (sprintf "The value '%s' is not a valid directory path." x)))
+    |> Option.iter (fun x -> raise (ArgumentException(sprintf "The value '%s' is not a valid directory path." x)))
 
-    let proc = match task.UseSeperateWindow with
-               | true -> new Process(StartInfo = new ProcessStartInfo(
+    let proc = if task.UseSeperateWindow then
+                new Process(StartInfo = new ProcessStartInfo(
                                                 Arguments = task.Arguments,
                                                 CreateNoWindow = true,
                                                 FileName = task.FileName,
@@ -81,7 +81,7 @@ let public Create task processOutput output =
                                                 UseShellExecute = true,
                                                 WorkingDirectory = task.WorkingDirectory
                                               ))
-               | false -> new Process(StartInfo = new ProcessStartInfo(
+               else new Process(StartInfo = new ProcessStartInfo(
                                                 Arguments = task.Arguments,
                                                 CreateNoWindow = true,
                                                 FileName = task.FileName,
