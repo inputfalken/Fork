@@ -15,19 +15,12 @@ let internal search (processes : StartInfo list) (input : string) =
         then (noAliasGroupSearch(), input) |> SearchResult.Alias
         else (search |> List.collect (fun x -> x.Processes), input) |> SearchResult.AliasGroup
 
-let internal Exec input context exitResolver startProcess =
-    let processes = match search context.Processes input with
+let internal Exec input processes exitResolver startProcess =
+    let processes = match search processes input with
                     | Alias(x, y) -> match x with
                                      | Some x -> [ x ]
                                      | None -> []
                     | AliasGroup(x, y) -> x
                     |> List.map (fun x -> x.Arguments |> startProcess; x)
 
-    {
-      InputFunction = context.InputFunction
-      OutputFunction = context.OutputFunction
-      ActiveProcesses = context.ActiveProcesses @ processes
-      Processes = context.Processes
-      ExitResolver = exitResolver
-      ProcessFactory = context.ProcessFactory
-    }
+    processes
