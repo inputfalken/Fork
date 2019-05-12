@@ -1,7 +1,6 @@
 module Fork.Session
 open FSharp.Data.Runtime.StructuralInference
 open Fork
-open Fork
 open Fork.InputAnalyzer
 open ProcessHandler
 open State
@@ -10,7 +9,7 @@ open System
 
 let rec internal start (context : Context) =
     let isAlive (p : Process) = try p.Responding |> ignore; "running" with :? System.InvalidOperationException as x -> "stopped"
-    let startProcess p = p |> (fun x -> ProcessHandler.Run x context.OutputFunction) |> Async.Start
+    let startProcess p = p |> (fun x -> x |> context.ProcessFactory |> (fun x -> ProcessHandler.Run x context.OutputFunction)) |> Async.Start
     let stopProcess (p : FProcess) = try (p.Process, TimeSpan.FromSeconds 30.)
                                          ||> ProcessHandler.RecursiveKill
                                          |> List.filter (fun x -> x.ExitCode <> 0)

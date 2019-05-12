@@ -25,7 +25,7 @@ let internal Exec input context exitResolver startProcess stopProcess =
         context.OutputFunction "There's no active procceses."
         context
     else
-        let restart x = x |> stopProcess; x.Arguments |> context.ProcessFactory |> (fun x -> startProcess x; x)
+        let restart x = x |> stopProcess; x.Arguments |> startProcess ; x
         let processes = match search context.Processes context.ActiveProcesses input with
                         | Alias(x, y) -> match x with
                                          | Some x -> x |> (fun x -> [ restart x ])

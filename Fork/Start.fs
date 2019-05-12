@@ -21,8 +21,7 @@ let internal Exec input context exitResolver startProcess =
                                      | Some x -> [ x ]
                                      | None -> []
                     | AliasGroup(x, y) -> x
-                    |> List.map (fun x -> x.Arguments |> context.ProcessFactory)
-                    |> List.map (fun x -> x |> startProcess; x)
+                    |> List.map (fun x -> x.Arguments |> startProcess; x)
 
     {
       InputFunction = context.InputFunction
