@@ -16,11 +16,9 @@ let internal search (processes : StartInfo list) (input : string) =
         else (search |> List.collect (fun x -> x.Processes), input) |> SearchResult.AliasGroup
 
 let internal Exec input processes exitResolver startProcess =
-    let processes = match search processes input with
+    match search processes input with
                     | Alias(x, y) -> match x with
                                      | Some x -> [ x ]
                                      | None -> []
                     | AliasGroup(x, y) -> x
                     |> List.map (fun x -> x.Arguments |> startProcess; x)
-
-    processes
