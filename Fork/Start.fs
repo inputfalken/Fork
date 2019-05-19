@@ -22,4 +22,4 @@ let internal Exec input processes activeProcesses exitResolver startProcess =
                                      | None -> []
                     | AliasGroup(x, y) -> x
                     |> List.map (fun x -> x.Arguments |> startProcess; x)
-                    |> List.append activeProcesses
+                    |> (fun x -> activeProcesses @ x)
