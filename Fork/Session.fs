@@ -45,7 +45,22 @@ let rec internal start (context : Context) =
         | InputAnalyzer.AliasCommand x ->
             match x.Command with
             | AliasCommandEnum.Stop ->
-                 Command.Stop.Exec x.Alias context exitResolver stopProcess |> start
+                 if context.ActiveProcesses.IsEmpty then
+                     context.OutputFunction "There's no active procceses."
+                     context
+                 else
+                     Command.Stop.Exec x.Alias context.Processes context.ActiveProcesses exitResolver stopProcess
+                     |> (fun x ->
+                             {
+                              InputFunction = context.InputFunction
+                              OutputFunction = context.OutputFunction
+                              ActiveProcesses = x
+                              Processes = context.Processes
+                              ExitResolver = exitResolver
+                              ProcessFactory = context.ProcessFactory
+                            }
+                     )
+                 |> start
             | AliasCommandEnum.Start ->
                 Command.Start.Exec x.Alias context.Processes exitResolver startProcess |> (fun x ->
                         {
