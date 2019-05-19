@@ -45,35 +45,21 @@ let rec internal start (context : Context) =
         | InputAnalyzer.AliasCommand x ->
             match x.Command with
             | AliasCommandEnum.Stop ->
-                 if context.ActiveProcesses.IsEmpty then
-                     context.OutputFunction "There's no active procceses."
-                     context
-                 else
-                     Command.Stop.Exec x.Alias context.Processes context.ActiveProcesses exitResolver stopProcess
-                     |> (fun x ->
-                             {
-                              InputFunction = context.InputFunction
-                              OutputFunction = context.OutputFunction
-                              ActiveProcesses = x
-                              Processes = context.Processes
-                              ExitResolver = exitResolver
-                              ProcessFactory = context.ProcessFactory
-                            }
-                     )
-                 |> start
-            | AliasCommandEnum.Start ->
-                Command.Start.Exec x.Alias context.Processes exitResolver startProcess |> (fun x ->
+                 if context.ActiveProcesses.IsEmpty then context.OutputFunction "There's no active procceses." ; context.ActiveProcesses
+                 else Command.Stop.Exec x.Alias context.Processes context.ActiveProcesses exitResolver stopProcess
+            | AliasCommandEnum.Start -> Command.Start.Exec x.Alias context.Processes context.ActiveProcesses exitResolver startProcess
+            | AliasCommandEnum.Restart -> Command.Restart.Exec x.Alias context.Processes context.ActiveProcesses exitResolver startProcess stopProcess
+            | _ -> raise (NotImplementedException())
+            |> (fun x ->
                         {
                           InputFunction = context.InputFunction
                           OutputFunction = context.OutputFunction
-                          ActiveProcesses = context.ActiveProcesses @ x
+                          ActiveProcesses = x
                           Processes = context.Processes
                           ExitResolver = exitResolver
                           ProcessFactory = context.ProcessFactory
                         }
-                    ) |> start
-            | AliasCommandEnum.Restart ->
-                Command.Restart.Exec x.Alias context exitResolver startProcess stopProcess |> start
-            | _ -> raise (NotImplementedException())
+                )
+            |> start
     | Result.Error x ->
         context.OutputFunction x; context |> start
