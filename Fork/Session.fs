@@ -53,16 +53,16 @@ let rec internal start (context : Context) =
             | AliasCommandEnum.Start -> Command.Start.Exec x.Alias context.Processes context.ActiveProcesses exitResolver startProcess
             | AliasCommandEnum.Restart -> Command.Restart.Exec x.Alias context.Processes context.ActiveProcesses exitResolver startProcess stopProcess
             | _ -> raise (NotImplementedException())
-            |> (fun x ->
-                        {
-                          InputFunction = context.InputFunction
-                          OutputFunction = context.OutputFunction
-                          ActiveProcesses = x
-                          Processes = context.Processes
-                          ExitResolver = exitResolver
-                          ProcessFactory = context.ProcessFactory
-                        }
-                )
-            |> start
+        |> (fun x ->
+                    {
+                      InputFunction = context.InputFunction
+                      OutputFunction = context.OutputFunction
+                      ActiveProcesses = x
+                      Processes = context.Processes
+                      ExitResolver = exitResolver
+                      ProcessFactory = context.ProcessFactory
+                    }
+            )
+        |> start
     | Result.Error x ->
         context.OutputFunction x; context |> start
