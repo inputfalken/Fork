@@ -20,28 +20,16 @@ let internal search (processes : StartInfo list) (activeProcesses : FProcess lis
             )
             |> (fun x -> (x, input)) |> SearchResult.AliasGroup
 
-let internal Exec input context exitResolver startProcess stopProcess =
-    if context.ActiveProcesses.IsEmpty then
-        context.OutputFunction "There's no active procceses."
-        context
-    else
-        let restart x = x |> stopProcess; x.Arguments |> context.ProcessFactory |> (fun x -> startProcess x; x)
-        let processes = match search context.Processes context.ActiveProcesses input with
-                        | Alias(x, y) -> match x with
-                                         | Some x -> x |> (fun x -> [ restart x ])
-                                         | None -> context.ActiveProcesses
-                        | AliasGroup(x, y) ->
-                            x |> List.map (fun x -> restart x)
-                        |> (fun processes -> context.ActiveProcesses
-                                             |> List.filter (fun x -> not (processes |> List.exists (fun y -> y.Alias = x.Alias)))
-                                             |> List.append processes
-                           )
+let internal Exec input processes activeprocesses exitResolver startProcess stopProcess =
+    let restart x = x |> stopProcess; x.Arguments |> startProcess
+    match search processes activeprocesses input with
+    | Alias(x, y) -> match x with
+                     | Some x -> x |> (fun x -> [ restart x ])
+                     | None -> activeprocesses
+    | AliasGroup(x, y) ->
+        x |> List.map (fun x -> restart x)
+    |> (fun processes -> activeprocesses
+                         |> List.filter (fun x -> not (processes |> List.exists (fun y -> y.Alias = x.Alias)))
+                         |> List.append processes
+       )
 
-        {
-          InputFunction = context.InputFunction
-          OutputFunction = context.OutputFunction
-          ActiveProcesses = processes
-          Processes = context.Processes
-          ExitResolver = exitResolver
-          ProcessFactory = context.ProcessFactory
-        }
