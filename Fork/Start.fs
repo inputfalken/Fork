@@ -21,5 +21,5 @@ let internal Exec input processes activeProcesses exitResolver startProcess =
                                      | Some x -> [ x ]
                                      | None -> []
                     | AliasGroup(x, y) -> x
-                    |> List.map (fun x -> x.Arguments |> startProcess; x)
+                    |> List.map (fun x -> x.Arguments |> startProcess)
                     |> (fun x -> activeProcesses @ x)

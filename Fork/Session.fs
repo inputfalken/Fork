@@ -9,7 +9,11 @@ open System
 
 let rec internal start (context : Context) =
     let isAlive (p : Process) = try p.Responding |> ignore; "running" with :? System.InvalidOperationException as x -> "stopped"
-    let startProcess p = p |> (fun x -> x |> context.ProcessFactory |> (fun x -> ProcessHandler.Run x context.OutputFunction)) |> Async.Start
+    let startProcess p = p
+                         |> fun x -> x
+                                     |> context.ProcessFactory
+                                     |> fun x -> ProcessHandler.Run x context.OutputFunction, x
+                         |> fun (x, y) -> Async.Start x; y
     let stopProcess (p : FProcess) = try (p.Process, TimeSpan.FromSeconds 30.)
                                          ||> ProcessHandler.RecursiveKill
                                          |> List.filter (fun x -> x.ExitCode <> 0)
@@ -44,7 +48,7 @@ let rec internal start (context : Context) =
         | InputAnalyzer.AliasCommand x ->
             match x.Command with
             | AliasCommandEnum.Stop ->
-                 if context.ActiveProcesses.IsEmpty then context.OutputFunction "There's no active procceses." ; context.ActiveProcesses
+                 if context.ActiveProcesses.IsEmpty then context.OutputFunction "There's no active procceses."; context.ActiveProcesses
                  else Command.Stop.Exec x.Alias context.Processes context.ActiveProcesses exitResolver stopProcess
             | AliasCommandEnum.Start -> Command.Start.Exec x.Alias context.Processes context.ActiveProcesses exitResolver startProcess
             | AliasCommandEnum.Restart -> Command.Restart.Exec x.Alias context.Processes context.ActiveProcesses exitResolver startProcess stopProcess

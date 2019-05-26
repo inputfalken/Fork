@@ -21,7 +21,7 @@ let internal search (processes : StartInfo list) (activeProcesses : FProcess lis
             |> (fun x -> (x, input)) |> SearchResult.AliasGroup
 
 let internal Exec input processes activeprocesses exitResolver startProcess stopProcess =
-    let restart x = x |> stopProcess; x.Arguments |> startProcess ; x
+    let restart x = x |> stopProcess; x.Arguments |> startProcess
     match search processes activeprocesses input with
     | Alias(x, y) -> match x with
                      | Some x -> x |> (fun x -> [ restart x ])
