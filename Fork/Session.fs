@@ -35,12 +35,11 @@ let rec internal start (context : Context) =
             match x with
             | CommandEnum.Exit -> context.ActiveProcesses
             | CommandEnum.List ->
-                if
-                    context.ActiveProcesses.IsEmpty then context.OutputFunction "There's no active processes."; context |> start
+                if context.ActiveProcesses.IsEmpty then context.OutputFunction "There's no active processes."
                 else
                     context.ActiveProcesses |> List.map (fun x -> sprintf "%s (%s) = %s %s %s" x.Alias (isAlive x.Process) x.Process.StartInfo.FileName x.Process.StartInfo.Arguments x.Process.StartInfo.WorkingDirectory)
                     |> List.iter context.OutputFunction
-                    context |> start
+                context |> start
             | _ -> raise (NotImplementedException())
         | InputAnalyzer.AliasCommand x ->
             match x.Command with
