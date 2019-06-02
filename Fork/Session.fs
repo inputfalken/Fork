@@ -6,6 +6,7 @@ open ProcessHandler
 open State
 open System.Diagnostics
 open System
+open System.Collections.Generic
 
 let rec internal start (context : Context) =
     let isAlive (p : Process) = try p.Responding |> ignore; "running" with :? System.InvalidOperationException as x -> "stopped"
@@ -38,12 +39,18 @@ let rec internal start (context : Context) =
         | InputAnalyzer.Command.CommandEnum x ->
             match x with
             | CommandEnum.Exit -> context.ActiveProcesses
+            | CommandEnum.Alias ->
+                let fold = Environment.NewLine + "  "
+                context.Processes
+                |> List.fold (fun x y -> (if x = String.Empty then x else x + Environment.NewLine) + y.Alias + (y.Processes |> List.fold (fun x y -> x + y.Alias + fold) (fold))) String.Empty
+                |> context.OutputFunction
+                |> (fun _ -> context.ActiveProcesses)
             | CommandEnum.List ->
                 if context.ActiveProcesses.IsEmpty then context.OutputFunction "There's no active processes."
                 else
                     context.ActiveProcesses |> List.map (fun x -> sprintf "%s (%s) = %s %s %s" x.Alias (isAlive x.Process) x.Process.StartInfo.FileName x.Process.StartInfo.Arguments x.Process.StartInfo.WorkingDirectory)
                     |> List.iter context.OutputFunction
-                context |> start
+                context.ActiveProcesses
             | _ -> raise (NotImplementedException())
         | InputAnalyzer.AliasCommand x ->
             match x.Command with

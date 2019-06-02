@@ -4,13 +4,13 @@ open FParsec
 
 type public AliasCommandEnum = | Restart = 0 | Stop = 1 | Start = 3
 type public AliasCommand = { Command : AliasCommandEnum; Alias : string }
-type public CommandEnum = | List = 0 | Exit = 1
+type public CommandEnum = | List = 0 | Exit = 1 | Alias = 2
 type public Command =
     | AliasCommand of AliasCommand
     | CommandEnum of CommandEnum
 
 let aliasCommands = [ "restart"; "stop"; "start" ]
-let commands = [ "exit"; "list" ]
+let commands = [ "exit"; "list"; "alias" ]
 let (|InvariantEqual|_|) (str : string) arg =
   if String.Compare(str, arg, StringComparison.OrdinalIgnoreCase) = 0
     then Some() else None
