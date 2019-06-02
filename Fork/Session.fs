@@ -49,9 +49,9 @@ let rec internal start (context : Context) =
             match x.Command with
             | AliasCommandEnum.Stop ->
                  if context.ActiveProcesses.IsEmpty then context.OutputFunction "There's no active procceses."; context.ActiveProcesses
-                 else Command.Stop.Exec x.Alias context.Processes context.ActiveProcesses exitResolver stopProcess
-            | AliasCommandEnum.Start -> Command.Start.Exec x.Alias context.Processes context.ActiveProcesses exitResolver startProcess
-            | AliasCommandEnum.Restart -> Command.Restart.Exec x.Alias context.Processes context.ActiveProcesses exitResolver startProcess stopProcess
+                 else Command.Stop.Exec x.Alias context.Processes context.ActiveProcesses stopProcess
+            | AliasCommandEnum.Start -> Command.Start.Exec x.Alias context.Processes context.ActiveProcesses startProcess
+            | AliasCommandEnum.Restart -> Command.Restart.Exec x.Alias context.Processes context.ActiveProcesses startProcess stopProcess
             | _ -> raise (NotImplementedException())
         |> (fun x ->
                     {

@@ -20,7 +20,7 @@ let internal search (processes : StartInfo list) (activeProcesses : FProcess lis
             )
             |> (fun x -> (x, input)) |> SearchResult.AliasGroup
 
-let internal Exec input processes activeProcesses exitResolver stopProcess =
+let internal Exec input processes activeProcesses stopProcess =
         let processes = match search processes activeProcesses input with
                         | Alias(x, y) -> match x with
                                          | Some x ->

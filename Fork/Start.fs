@@ -15,7 +15,7 @@ let internal search (processes : StartInfo list) (input : string) =
         then (noAliasGroupSearch(), input) |> SearchResult.Alias
         else (search |> List.collect (fun x -> x.Processes), input) |> SearchResult.AliasGroup
 
-let internal Exec input processes activeProcesses exitResolver startProcess =
+let internal Exec input processes activeProcesses startProcess =
     match search processes input with
                     | Alias(x, y) -> match x with
                                      | Some x -> [ x ]
