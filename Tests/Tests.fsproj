@@ -11,6 +11,7 @@
         <Compile Include="DummyData.fs" />
         <Compile Include="StartSearchTests.fs" />
         <Compile Include="StopSearchTests.fs" />
+        <Compile Include="CreateIdTests.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
 
