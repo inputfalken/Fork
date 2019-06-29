@@ -74,6 +74,7 @@ let main argv =
                         ProcessFactory = processWithStdout
                         Processes = processes
                         ExitResolver = None
+                        OnExit = Console.CancelKeyPress |> Event.map (fun x -> x)
                     }
                     |> Session.start
                     |> ignore

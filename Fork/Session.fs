@@ -8,7 +8,7 @@ open System.Diagnostics
 open System
 open System.Collections.Generic
 
-let rec internal start (context : Context) =
+let rec internal start (context : Context<'T>) =
     let isAlive (p : Process) = try p.Responding |> ignore; "running" with :? System.InvalidOperationException as x -> "stopped"
     let startProcess p = p
                          |> fun x -> x
@@ -26,12 +26,13 @@ let rec internal start (context : Context) =
     let exitResolver = if context.ActiveProcesses.IsEmpty then
                             None
                         else
-                             {
-                                 Event = System.AppDomain.CurrentDomain.ProcessExit
+                             let event = System.AppDomain.CurrentDomain.ProcessExit
                                          |> Event.map (fun x -> Choice1Of2 x)
-                                         |> Event.merge (Console.CancelKeyPress |> Event.map (fun x -> Choice2Of2 x))
-                                 Handler = Handler<Choice<EventArgs, ConsoleCancelEventArgs>>(fun _ arg -> sprintf "%A" arg |> context.OutputFunction; context.ActiveProcesses |> List.iter stopProcess)
-                              } |> (fun x -> x.Event.AddHandler x.Handler; Some x)
+                                         |> Event.merge (context.OnExit |> Event.map (fun x -> Choice2Of2 x))
+                             {
+                                 Event = event
+                                 Handler = Handler<Choice<EventArgs, 'T>>(fun _ arg -> sprintf "%A" arg |> context.OutputFunction; context.ActiveProcesses |> List.iter stopProcess)
+                             } |> (fun x -> x.Event.AddHandler x.Handler; Some x)
 
     match context.InputFunction() with
     | Result.Ok command ->
@@ -68,6 +69,7 @@ let rec internal start (context : Context) =
                       Processes = context.Processes
                       ExitResolver = exitResolver
                       ProcessFactory = context.ProcessFactory
+                      OnExit = context.OnExit
                     }
             )
         |> start
