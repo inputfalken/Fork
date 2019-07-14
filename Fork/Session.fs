@@ -1,12 +1,12 @@
 module Fork.Session
 open FSharp.Data.Runtime.StructuralInference
 open Fork
-open Fork.InputAnalyzer
+open InputAnalyzer
 open ProcessHandler
 open State
 open System.Diagnostics
+open Command
 open System
-open System.Collections.Generic
 
 let rec internal start (context : Context<'T>) =
     let isAlive (p : Process) = try p.Responding |> ignore; "running" with :? System.InvalidOperationException as x -> "stopped"
@@ -37,7 +37,7 @@ let rec internal start (context : Context<'T>) =
     match context.InputFunction() with
     | Result.Ok command ->
         match command with
-        | InputAnalyzer.Command.CommandEnum x ->
+        | CommandEnum x ->
             match x with
             | CommandEnum.Exit -> context.ActiveProcesses
             | CommandEnum.Alias ->
@@ -53,13 +53,13 @@ let rec internal start (context : Context<'T>) =
                     |> List.iter context.OutputFunction
                 context.ActiveProcesses
             | _ -> raise (NotImplementedException())
-        | InputAnalyzer.AliasCommand x ->
+        | AliasCommand x ->
             match x.Command with
             | AliasCommandEnum.Stop ->
                  if context.ActiveProcesses.IsEmpty then context.OutputFunction "There's no active procceses."; context.ActiveProcesses
-                 else Command.Stop.Exec x.Alias context.Processes context.ActiveProcesses stopProcess
-            | AliasCommandEnum.Start -> Command.Start.Exec x.Alias context.Processes context.ActiveProcesses startProcess
-            | AliasCommandEnum.Restart -> Command.Restart.Exec x.Alias context.Processes context.ActiveProcesses startProcess stopProcess
+                 else Stop.Exec x.Alias context.Processes context.ActiveProcesses stopProcess
+            | AliasCommandEnum.Start -> Start.Exec x.Alias context.Processes context.ActiveProcesses startProcess
+            | AliasCommandEnum.Restart -> Restart.Exec x.Alias context.Processes context.ActiveProcesses startProcess stopProcess
             | _ -> raise (NotImplementedException())
         |> (fun x ->
                     {

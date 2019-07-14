@@ -1,6 +1,5 @@
 module internal Command.Start
 open ProcessHandler
-open ProcessHandler
 open State
 
 let internal search (processes : StartInfo list) (input : string) =
